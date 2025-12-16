@@ -3,6 +3,7 @@ package com.airbnb.miniairbnb.service;
 import com.airbnb.miniairbnb.model.*;
 import com.airbnb.miniairbnb.repository.PropertyRepository;
 import com.airbnb.miniairbnb.repository.ReservationRepository;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -11,6 +12,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
+@Service
+@Transactional
 public class ReservationServiceImpl implements ReservationService{
     private final ReservationRepository reservationRepository;
     private final PropertyRepository propertyRepository;
