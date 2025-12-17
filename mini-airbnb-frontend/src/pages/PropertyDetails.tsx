@@ -23,7 +23,8 @@ const PropertyDetails = () => {
   });
   const [reserving, setReserving] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
-  const [error, setError] = useState(false); // Changed to boolean for UI state
+  const [error, setError] = useState(false);
+  const [busyDates, setBusyDates] = useState<Reservation[]>([]);
 
   // State pentru modal
   const [modalConfig, setModalConfig] = useState<{
@@ -45,11 +46,16 @@ const PropertyDetails = () => {
       if (!id) return;
       try {
         setLoading(true);
-        const data = await propertyService.getPropertyById(Number(id));
-        setProperty(data);
+        const [propertyData, dates] = await Promise.all([
+          propertyService.getPropertyById(Number(id)),
+          reservationService.getBusyDatesByProperty(Number(id))
+        ]);
+        
+        setProperty(propertyData);
+        setBusyDates(dates);
         setReservationData((prev) => ({
           ...prev,
-          propertyId: data.id,
+          propertyId: propertyData.id,
         }));
       } catch (err) {
         setError(true);
@@ -63,11 +69,25 @@ const PropertyDetails = () => {
     loadProperty();
   }, [id]);
 
+  const isDateOverlap = (start1: string, end1: string, start2: string, end2: string) => {
+    return new Date(start1) <= new Date(end2) && new Date(start2) <= new Date(end1);
+  };
+
   const handleReservation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAuthenticated) {
       // Salvăm locația curentă pentru a ne întoarce după login
       navigate(`/login?redirectTo=/property/${id}`);
+      return;
+    }
+
+    // Verifică suprapunerea cu rezervările existente
+    const hasOverlap = busyDates.some(res => 
+      isDateOverlap(reservationData.checkInDate, reservationData.checkOutDate, res.checkInDate, res.checkOutDate)
+    );
+
+    if (hasOverlap) {
+      showToast("Proprietatea este deja rezervată în această perioadă!", "error");
       return;
     }
 
@@ -760,6 +780,21 @@ const PropertyDetails = () => {
                       }}
                     />
                   </div>
+
+                  {busyDates.length > 0 && (
+                    <div style={{ marginBottom: "20px", padding: "12px", backgroundColor: "#fff8f6", borderRadius: "8px", border: "1px solid #ffece5" }}>
+                      <div style={{ fontSize: "13px", fontWeight: "600", color: "#c53030", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span>⚠️ Perioade ocupate:</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        {busyDates.map((res, i) => (
+                          <div key={i} style={{ fontSize: "12px", color: "#717171" }}>
+                            • {new Date(res.checkInDate).toLocaleDateString('ro-RO')} - {new Date(res.checkOutDate).toLocaleDateString('ro-RO')}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     type="submit"

@@ -149,6 +149,13 @@ public class ReservationController {
         return ResponseEntity.ok(reservations);
     }
 
+    // GET /api/reservations/property/{propertyId}/busy-dates - lista cu perioadele ocupate (public)
+    @GetMapping("/property/{propertyId}/busy-dates")
+    public ResponseEntity<List<Reservation>> getBusyDates(@PathVariable Long propertyId) {
+        List<Reservation> busyDates = reservationService.getBusyDatesByProperty(propertyId);
+        return ResponseEntity.ok(busyDates);
+    }
+
     // GET /api/reservations/{id} - gaseste o rezervare dupa id
     @GetMapping("/{id}")
     public ResponseEntity<Reservation> getReservationById(@PathVariable Long id) {

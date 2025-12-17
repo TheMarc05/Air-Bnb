@@ -63,5 +63,13 @@ export const reservationService = {
     const response = await api.get<Reservation>(`/reservations/${id}`);
     return response.data;
   },
+
+  // Obține perioadele ocupate pentru o proprietate
+  getBusyDatesByProperty: async (propertyId: number): Promise<Reservation[]> => {
+    const response = await api.get<Reservation[]>(
+      `/reservations/property/${propertyId}/busy-dates`
+    );
+    return response.data;
+  },
 };
 

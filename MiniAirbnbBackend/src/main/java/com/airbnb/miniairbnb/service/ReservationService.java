@@ -27,6 +27,8 @@ public interface ReservationService {
 
     boolean isPropertyAvailable(Long propertyId, LocalDate checkInDate, LocalDate checkOutDate); //verifica disponibilitatea unei proprietati intr-un interbal de date
 
+    List<Reservation> getBusyDatesByProperty(Long propertyId);
+
     java.math.BigDecimal calculateTotalPrice(java.math.BigDecimal pricePerNight,
                                              LocalDate checkInDate, LocalDate checkOutDate); //calculeaza pretul total pt o rezervare
 }

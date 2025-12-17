@@ -173,16 +173,25 @@ public class ReservationServiceImpl implements ReservationService{
             return false;
         }
 
-        // Găsește rezervări CONFIRMED care se suprapun cu intervalul dat
-        List<Reservation> conflictingReservations = reservationRepository
-                .findByPropertyAndStatusAndCheckInDateLessThanEqualAndCheckOutDateGreaterThanEqual(
-                        property,
-                        ReservationStatus.CONFIRMED,
-                        checkOutDate,
-                        checkInDate
-                );
+        // Găsește rezervări CONFIRMED sau PENDING care se suprapun cu intervalul dat
+        List<Reservation> conflictingReservations = reservationRepository.findByProperty(property).stream()
+                .filter(res -> (res.getStatus() == ReservationStatus.CONFIRMED || res.getStatus() == ReservationStatus.PENDING) &&
+                        !(checkOutDate.isBefore(res.getCheckInDate()) || checkInDate.isAfter(res.getCheckOutDate())))
+                .toList();
 
         return conflictingReservations.isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Reservation> getBusyDatesByProperty(Long propertyId) {
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new RuntimeException("Property not found with id: " + propertyId));
+        
+        // Returnăm doar rezervările CONFIRMED sau PENDING care blochează calendarul
+        return reservationRepository.findByProperty(property).stream()
+                .filter(res -> res.getStatus() == ReservationStatus.CONFIRMED || res.getStatus() == ReservationStatus.PENDING)
+                .toList();
     }
 
     @Override
