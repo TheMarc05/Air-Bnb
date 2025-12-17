@@ -112,6 +112,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
                 style={{
                   width: "100%",
                   padding: "14px 16px",
@@ -154,6 +155,7 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
                 style={{
                   width: "100%",
                   padding: "14px 16px",

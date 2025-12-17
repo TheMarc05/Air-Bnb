@@ -3,6 +3,7 @@ import { useAuth } from "./context/AuthContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import PropertyDetails from "./pages/PropertyDetails";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -21,6 +22,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/property/:id" element={<PropertyDetails />} />
         <Route path="/" element={<Home />} />
       </Routes>
     </BrowserRouter>

@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
+import { propertyService } from "../services/propertyService";
 import { UserRole } from "../types";
+import type { Property } from "../types";
 
 const Home = () => {
   const { user, isAuthenticated, updateUser } = useAuth();
   const navigate = useNavigate();
   const [becomingHost, setBecomingHost] = useState(false);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const handleBecomeHost = async () => {
     if (!isAuthenticated) {
@@ -39,6 +43,22 @@ const Home = () => {
       setBecomingHost(false);
     }
   };
+
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        setLoading(true);
+        const data = await propertyService.getAllProperties();
+        setProperties(data);
+      } catch (error) {
+        console.error("Failed to load properties:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProperties();
+  }, []);
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#fff" }}>
@@ -500,40 +520,186 @@ const Home = () => {
           >
             Exploră locuințe
           </h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-              gap: "40px",
-            }}
-          >
-            {/* Placeholder pentru proprietăți */}
+          {loading ? (
             <div
               style={{
-                borderRadius: "12px",
-                overflow: "hidden",
-                border: "1px solid #ebebeb",
-                backgroundColor: "#fafafa",
-                minHeight: "400px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                textAlign: "center",
+                padding: "60px 20px",
                 color: "#717171",
-                fontSize: "14px",
-                transition: "transform 0.2s, box-shadow 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
+                fontSize: "15px",
               }}
             >
-              <p>Proprietăți vor apărea aici</p>
+              Se încarcă proprietățile...
             </div>
-          </div>
+          ) : properties.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "60px 20px",
+                color: "#717171",
+                fontSize: "15px",
+              }}
+            >
+              Nu există proprietăți disponibile momentan.
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                gap: "40px",
+              }}
+            >
+              {properties.map((property) => (
+                <Link
+                  key={property.id}
+                  to={`/property/${property.id}`}
+                  style={{
+                    textDecoration: "none",
+                    color: "inherit",
+                  }}
+                >
+                  <div
+                    style={{
+                      borderRadius: "12px",
+                      overflow: "hidden",
+                      border: "1px solid #ebebeb",
+                      backgroundColor: "#fff",
+                      cursor: "pointer",
+                      transition: "transform 0.2s, box-shadow 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow =
+                        "0 4px 12px rgba(0,0,0,0.08)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    {/* Image Placeholder */}
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "240px",
+                        backgroundColor: "#f7f7f7",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#717171",
+                        fontSize: "14px",
+                      }}
+                    >
+                      Imagine
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ padding: "16px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            fontSize: "16px",
+                            fontWeight: "600",
+                            color: "#222",
+                            margin: 0,
+                            flex: 1,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {property.title}
+                        </h3>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            marginLeft: "8px",
+                          }}
+                        >
+                          <span style={{ fontSize: "14px" }}>⭐</span>
+                          <span
+                            style={{
+                              fontSize: "14px",
+                              fontWeight: "600",
+                              color: "#222",
+                            }}
+                          >
+                            4.8
+                          </span>
+                        </div>
+                      </div>
+
+                      <p
+                        style={{
+                          fontSize: "14px",
+                          color: "#717171",
+                          margin: "0 0 8px 0",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {property.city}, {property.country}
+                      </p>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          fontSize: "14px",
+                          color: "#717171",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        <span>{property.bedrooms} paturi</span>
+                        <span>•</span>
+                        <span>{property.bathrooms} băi</span>
+                        <span>•</span>
+                        <span>Max {property.maxGuests} oaspeți</span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "baseline",
+                          marginTop: "12px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "16px",
+                            fontWeight: "600",
+                            color: "#222",
+                          }}
+                        >
+                          {property.pricePerNight}€
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "14px",
+                            color: "#717171",
+                            marginLeft: "4px",
+                          }}
+                        >
+                          / noapte
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

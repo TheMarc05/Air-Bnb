@@ -130,6 +130,7 @@ const Register = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                autoComplete="email"
                 style={{
                   width: "100%",
                   padding: "14px 16px",
@@ -174,6 +175,7 @@ const Register = () => {
                 onChange={handleChange}
                 required
                 minLength={8}
+                autoComplete="new-password"
                 style={{
                   width: "100%",
                   padding: "14px 16px",
