@@ -1,5 +1,6 @@
 package com.airbnb.miniairbnb.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -9,6 +10,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "properties")
@@ -66,8 +68,13 @@ public class Property {
     //relatie many to one cu user (host-ul proprietatii)
     @ManyToOne(fetch = FetchType.LAZY) //incarcare kazy pt performanta
     @JoinColumn(name = "host_id", nullable = false)
-    @NotNull(message = "Host is required")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User host;
+
+    @ElementCollection
+    @CollectionTable(name = "property_images", joinColumns = @JoinColumn(name = "property_id"))
+    @Column(name = "image_url")
+    private List<String> imageUrls;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

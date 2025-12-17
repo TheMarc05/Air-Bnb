@@ -3,15 +3,25 @@ package com.airbnb.miniairbnb.dto;
 public class AuthResponse {
     private String token;
     private String type = "Bearer";
+    private Long id;
     private String email;
     private String role;
 
     public AuthResponse() {}
 
-    public AuthResponse(String token, String email, String role) {
+    public AuthResponse(String token, Long id, String email, String role) {
         this.token = token;
+        this.id = id;
         this.email = email;
         this.role = role;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getToken() {

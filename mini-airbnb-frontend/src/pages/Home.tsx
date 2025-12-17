@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
@@ -7,11 +7,37 @@ import { UserRole } from "../types";
 import type { Property } from "../types";
 
 const Home = () => {
-  const { user, isAuthenticated, updateUser } = useAuth();
+  const { user, isAuthenticated, updateUser, logout } = useAuth();
   const navigate = useNavigate();
   const [becomingHost, setBecomingHost] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showHostModal, setShowHostModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [filters, setFilters] = useState({
+    city: "",
+    country: "",
+    minPrice: "",
+    maxPrice: "",
+    minBedrooms: "",
+    minBathrooms: "",
+    maxGuests: "",
+  });
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleBecomeHost = async () => {
     if (!isAuthenticated) {
@@ -32,10 +58,12 @@ const Home = () => {
       const response = await authService.becomeHost();
       authService.saveAuthData(response);
       updateUser({
+        id: response.id,
         email: response.email,
         role: response.role as UserRole,
       });
-      alert("🎉 Congratulations! You are now a Host!");
+      // Afișează modal-ul de succes
+      setShowHostModal(true);
     } catch (error) {
       alert("Failed to become a host. Please try again.");
       console.error(error);
@@ -48,7 +76,10 @@ const Home = () => {
     const loadProperties = async () => {
       try {
         setLoading(true);
-        const data = await propertyService.getAllProperties();
+        const data = await propertyService.getAllProperties(
+          filters.city || undefined,
+          filters.country || undefined
+        );
         setProperties(data);
       } catch (error) {
         console.error("Failed to load properties:", error);
@@ -58,22 +89,165 @@ const Home = () => {
     };
 
     loadProperties();
-  }, []);
+    setIsVisible(true);
+  }, [filters.city, filters.country]);
+
+  const handleFilterChange = (name: string, value: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      city: "",
+      country: "",
+      minPrice: "",
+      maxPrice: "",
+      minBedrooms: "",
+      minBathrooms: "",
+      maxGuests: "",
+    });
+  };
+
+  const filteredProperties = properties.filter((property) => {
+    if (filters.minPrice && property.pricePerNight < Number(filters.minPrice)) {
+      return false;
+    }
+    if (filters.maxPrice && property.pricePerNight > Number(filters.maxPrice)) {
+      return false;
+    }
+    if (
+      filters.minBedrooms &&
+      property.bedrooms < Number(filters.minBedrooms)
+    ) {
+      return false;
+    }
+    if (
+      filters.minBathrooms &&
+      property.bathrooms < Number(filters.minBathrooms)
+    ) {
+      return false;
+    }
+    if (filters.maxGuests && property.maxGuests < Number(filters.maxGuests)) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#fff" }}>
-      {/* Header - Clean and Minimal */}
+      {/* Host Success Modal */}
+      {showHostModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setShowHostModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: "16px",
+              padding: "40px",
+              maxWidth: "500px",
+              width: "90%",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "16px",
+              }}
+            >
+              <div
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  backgroundColor: "#f0fdf4",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "24px",
+                }}
+              >
+                ✓
+              </div>
+              <h2
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "600",
+                  color: "#222",
+                  margin: 0,
+                }}
+              >
+                Felicitări!
+              </h2>
+            </div>
+            <p
+              style={{
+                fontSize: "16px",
+                color: "#717171",
+                marginBottom: "24px",
+                lineHeight: "1.5",
+              }}
+            >
+              Ești acum Gazdă! Poți crea și gestiona proprietăți.
+            </p>
+            <button
+              onClick={() => setShowHostModal(false)}
+              style={{
+                width: "100%",
+                padding: "16px",
+                backgroundColor: "#222",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "16px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#000";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#222";
+              }}
+            >
+              Perfect!
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Header - Professional and Elegant */}
       <header
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          padding: "24px 80px",
+          padding: "20px 80px",
           borderBottom: "1px solid #ebebeb",
           position: "sticky",
           top: 0,
           backgroundColor: "#fff",
           zIndex: 100,
+          backdropFilter: "blur(10px)",
         }}
       >
         {/* Logo */}
@@ -84,14 +258,21 @@ const Home = () => {
             alignItems: "center",
             textDecoration: "none",
             color: "#FF385C",
-            fontSize: "20px",
+            fontSize: "18px",
             fontWeight: "600",
-            letterSpacing: "-0.3px",
+            letterSpacing: "-0.2px",
+            transition: "opacity 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = "0.8";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = "1";
           }}
         >
           <svg
-            width="32"
-            height="32"
+            width="30"
+            height="30"
             viewBox="0 0 32 32"
             fill="none"
             style={{ marginRight: "8px" }}
@@ -109,33 +290,89 @@ const Home = () => {
         </Link>
 
         {/* Navigation - Only Locuințe */}
-        <nav>
+        <nav
+          style={{
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+        >
           <a
             href="#"
             style={{
               textDecoration: "none",
               color: "#222",
               fontWeight: "600",
-              fontSize: "15px",
-              paddingBottom: "24px",
+              fontSize: "14px",
+              padding: "8px 0",
               borderBottom: "2px solid #222",
-              transition: "color 0.2s",
+              transition: "all 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = "#FF385C";
+              e.currentTarget.style.borderBottomColor = "#FF385C";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.color = "#222";
+              e.currentTarget.style.borderBottomColor = "#222";
             }}
           >
+            <span style={{ fontSize: "18px" }}>🏠</span>
             Locuințe
           </a>
         </nav>
 
         {/* Right Side - User Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {isAuthenticated ? (
             <>
+              {/* Buton "Adaugă proprietate" pentru HOST */}
+              {(user?.role === UserRole.ROLE_HOST ||
+                user?.role === UserRole.ROLE_ADMIN) && (
+                <Link
+                  to="/create-property"
+                  style={{
+                    padding: "12px 20px",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    borderRadius: "22px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    color: "#222",
+                    textDecoration: "none",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f7f7f7";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Adaugă proprietate
+                </Link>
+              )}
+
               {/* Buton "Devino gazdă" */}
               {user?.role !== UserRole.ROLE_HOST &&
                 user?.role !== UserRole.ROLE_ADMIN && (
@@ -143,77 +380,209 @@ const Home = () => {
                     onClick={handleBecomeHost}
                     disabled={becomingHost}
                     style={{
-                      padding: "14px 24px",
+                      padding: "12px 20px",
                       backgroundColor: "transparent",
                       border: "none",
-                      borderRadius: "24px",
+                      borderRadius: "22px",
                       cursor: becomingHost ? "not-allowed" : "pointer",
                       fontWeight: "600",
-                      fontSize: "15px",
+                      fontSize: "14px",
                       color: "#222",
                       transition: "all 0.2s",
+                      opacity: becomingHost ? 0.6 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
                     }}
                     onMouseEnter={(e) => {
                       if (!becomingHost) {
                         e.currentTarget.style.backgroundColor = "#f7f7f7";
-                        e.currentTarget.style.transform = "scale(1.02)";
                       }
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.transform = "scale(1)";
                     }}
                   >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
                     {becomingHost ? "Se procesează..." : "Devino gazdă"}
                   </button>
                 )}
 
               {/* User Menu */}
               <div
+                ref={menuRef}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "7px 7px 7px 14px",
-                  border: "1px solid #ddd",
-                  borderRadius: "24px",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow =
-                    "0 2px 8px rgba(0,0,0,0.18)";
-                  e.currentTarget.style.transform = "scale(1.02)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.transform = "scale(1)";
+                  position: "relative",
                 }}
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  style={{ color: "#717171" }}
-                >
-                  <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" />
-                </svg>
                 <div
+                  onClick={() => setShowUserMenu(!showUserMenu)}
                   style={{
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "50%",
-                    backgroundColor: "#717171",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    color: "#fff",
-                    fontSize: "18px",
+                    gap: "10px",
+                    padding: "6px 6px 6px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "22px",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    backgroundColor: showUserMenu ? "#f7f7f7" : "transparent",
+                    boxShadow: showUserMenu
+                      ? "0 2px 8px rgba(0,0,0,0.15)"
+                      : "none",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!showUserMenu) {
+                      e.currentTarget.style.boxShadow =
+                        "0 2px 8px rgba(0,0,0,0.15)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!showUserMenu) {
+                      e.currentTarget.style.boxShadow = "none";
+                    }
                   }}
                 >
-                  👤
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    style={{ color: "#717171" }}
+                  >
+                    <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" />
+                  </svg>
+                  <div
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      borderRadius: "50%",
+                      backgroundColor: "#717171",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#fff",
+                      fontSize: "16px",
+                    }}
+                  >
+                    👤
+                  </div>
                 </div>
+                {/* Dropdown Menu */}
+                {showUserMenu && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      right: 0,
+                      marginTop: "8px",
+                      backgroundColor: "#fff",
+                      borderRadius: "12px",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                      border: "1px solid #ebebeb",
+                      minWidth: "200px",
+                      padding: "8px",
+                      zIndex: 200,
+                    }}
+                  >
+                    <Link
+                      to="/my-reservations"
+                      onClick={() => setShowUserMenu(false)}
+                      style={{
+                        display: "block",
+                        padding: "12px 16px",
+                        color: "#222",
+                        textDecoration: "none",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        borderRadius: "8px",
+                        transition: "background-color 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#f7f7f7";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }}
+                    >
+                      Rezervările mele
+                    </Link>
+                    {(user?.role === UserRole.ROLE_HOST ||
+                      user?.role === UserRole.ROLE_ADMIN) && (
+                      <Link
+                        to="/my-properties"
+                        onClick={() => setShowUserMenu(false)}
+                        style={{
+                          display: "block",
+                          padding: "12px 16px",
+                          color: "#222",
+                          textDecoration: "none",
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          borderRadius: "8px",
+                          transition: "background-color 0.2s",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "#f7f7f7";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                        }}
+                      >
+                        Proprietățile mele
+                      </Link>
+                    )}
+                    <div
+                      style={{
+                        height: "1px",
+                        backgroundColor: "#ebebeb",
+                        margin: "8px 0",
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        logout();
+                        setShowUserMenu(false);
+                        navigate("/");
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        backgroundColor: "transparent",
+                        color: "#222",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "background-color 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#f7f7f7";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }}
+                    >
+                      Deconectează-te
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -221,52 +590,49 @@ const Home = () => {
               <button
                 onClick={() => navigate("/login")}
                 style={{
-                  padding: "14px 24px",
+                  padding: "12px 20px",
                   backgroundColor: "transparent",
                   border: "none",
-                  borderRadius: "24px",
+                  borderRadius: "22px",
                   cursor: "pointer",
                   fontWeight: "600",
-                  fontSize: "15px",
+                  fontSize: "14px",
                   color: "#222",
                   transition: "all 0.2s",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = "#f7f7f7";
-                  e.currentTarget.style.transform = "scale(1.02)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.transform = "scale(1)";
                 }}
               >
                 Devino gazdă
               </button>
-              <div
+              <button
+                onClick={() => navigate("/login")}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  padding: "7px 7px 7px 14px",
+                  gap: "10px",
+                  padding: "6px 6px 6px 12px",
                   border: "1px solid #ddd",
-                  borderRadius: "24px",
+                  borderRadius: "22px",
                   cursor: "pointer",
                   transition: "all 0.2s",
+                  backgroundColor: "transparent",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.boxShadow =
-                    "0 2px 8px rgba(0,0,0,0.18)";
-                  e.currentTarget.style.transform = "scale(1.02)";
+                    "0 2px 8px rgba(0,0,0,0.15)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.transform = "scale(1)";
                 }}
-                onClick={() => navigate("/login")}
               >
                 <svg
-                  width="18"
-                  height="18"
+                  width="16"
+                  height="16"
                   viewBox="0 0 16 16"
                   fill="currentColor"
                   style={{ color: "#717171" }}
@@ -275,30 +641,30 @@ const Home = () => {
                 </svg>
                 <div
                   style={{
-                    width: "32px",
-                    height: "32px",
+                    width: "30px",
+                    height: "30px",
                     borderRadius: "50%",
                     backgroundColor: "#717171",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     color: "#fff",
-                    fontSize: "18px",
+                    fontSize: "16px",
                   }}
                 >
                   👤
                 </div>
-              </div>
+              </button>
             </>
           )}
         </div>
       </header>
 
-      {/* Hero Section - Simple and Elegant */}
+      {/* Hero Section - Professional and Elegant */}
       <section
         style={{
-          backgroundColor: "#fafafa",
-          padding: "60px 80px 60px",
+          backgroundColor: "#fff",
+          padding: "48px 80px 56px",
           borderBottom: "1px solid #ebebeb",
         }}
       >
@@ -309,166 +675,288 @@ const Home = () => {
             textAlign: "center",
           }}
         >
-          <p
+          <h1
             style={{
-              fontSize: "18px",
-              color: "#717171",
-              marginBottom: "32px",
-              fontWeight: "400",
+              fontSize: "28px",
+              color: "#222",
+              marginBottom: "40px",
+              fontWeight: "600",
+              letterSpacing: "-0.3px",
             }}
           >
             Descoperă locuri unice de cazare în toată lumea
-          </p>
+          </h1>
 
-          {/* Search Bar - Clean Design */}
+          {/* Filters Section */}
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
               backgroundColor: "#fff",
-              borderRadius: "40px",
-              padding: "4px 4px 4px 24px",
+              borderRadius: "12px",
+              padding: "24px",
               boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-              maxWidth: "850px",
+              maxWidth: "1000px",
               margin: "0 auto",
               border: "1px solid #ebebeb",
-              transition: "box-shadow 0.3s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.12)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)";
             }}
           >
             <div
               style={{
-                flex: 1,
-                padding: "18px 24px",
-                borderRight: "1px solid #ebebeb",
-                cursor: "pointer",
-                transition: "background-color 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#fafafa";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                gap: "16px",
+                marginBottom: "16px",
               }}
             >
-              <div
-                style={{
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  marginBottom: "4px",
-                  color: "#222",
-                }}
-              >
-                Unde?
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#222",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Oraș
+                </label>
+                <input
+                  type="text"
+                  value={filters.city}
+                  onChange={(e) => handleFilterChange("city", e.target.value)}
+                  placeholder="Ex: București"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    outline: "none",
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#222";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                />
               </div>
-              <div style={{ fontSize: "14px", color: "#717171" }}>
-                Caută destinații
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#222",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Țară
+                </label>
+                <input
+                  type="text"
+                  value={filters.country}
+                  onChange={(e) =>
+                    handleFilterChange("country", e.target.value)
+                  }
+                  placeholder="Ex: România"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    outline: "none",
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#222";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#222",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Preț min (€)
+                </label>
+                <input
+                  type="number"
+                  value={filters.minPrice}
+                  onChange={(e) =>
+                    handleFilterChange("minPrice", e.target.value)
+                  }
+                  placeholder="Min"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    outline: "none",
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#222";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#222",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Preț max (€)
+                </label>
+                <input
+                  type="number"
+                  value={filters.maxPrice}
+                  onChange={(e) =>
+                    handleFilterChange("maxPrice", e.target.value)
+                  }
+                  placeholder="Max"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    outline: "none",
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#222";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#222",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Dormitoare min
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={filters.minBedrooms}
+                  onChange={(e) =>
+                    handleFilterChange("minBedrooms", e.target.value)
+                  }
+                  placeholder="Min"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    outline: "none",
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#222";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#222",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Băi min
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.5"
+                  value={filters.minBathrooms}
+                  onChange={(e) =>
+                    handleFilterChange("minBathrooms", e.target.value)
+                  }
+                  placeholder="Min"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    outline: "none",
+                    transition: "border-color 0.2s",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#222";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#ddd";
+                  }}
+                />
               </div>
             </div>
-            <div
-              style={{
-                flex: 1,
-                padding: "18px 24px",
-                borderRight: "1px solid #ebebeb",
-                cursor: "pointer",
-                transition: "background-color 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#fafafa";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
-            >
-              <div
+            {(filters.city ||
+              filters.country ||
+              filters.minPrice ||
+              filters.maxPrice ||
+              filters.minBedrooms ||
+              filters.minBathrooms ||
+              filters.maxGuests) && (
+              <button
+                onClick={clearFilters}
                 style={{
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  marginBottom: "4px",
+                  padding: "8px 16px",
+                  backgroundColor: "transparent",
                   color: "#222",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f7f7f7";
+                  e.currentTarget.style.borderColor = "#bbb";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.borderColor = "#ddd";
                 }}
               >
-                Când
-              </div>
-              <div style={{ fontSize: "14px", color: "#717171" }}>
-                Adaugă datele
-              </div>
-            </div>
-            <div
-              style={{
-                flex: 1,
-                padding: "18px 24px",
-                borderRight: "1px solid #ebebeb",
-                cursor: "pointer",
-                transition: "background-color 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#fafafa";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  marginBottom: "4px",
-                  color: "#222",
-                }}
-              >
-                Cine?
-              </div>
-              <div style={{ fontSize: "14px", color: "#717171" }}>
-                Adaugă oaspeți
-              </div>
-            </div>
-            <button
-              style={{
-                width: "52px",
-                height: "52px",
-                borderRadius: "50%",
-                backgroundColor: "#FF385C",
-                border: "none",
-                color: "white",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginLeft: "8px",
-                transition: "all 0.2s",
-                boxShadow: "0 2px 4px rgba(255,56,92,0.2)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "scale(1.08)";
-                e.currentTarget.style.backgroundColor = "#e61e4d";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 12px rgba(255,56,92,0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
-                e.currentTarget.style.backgroundColor = "#FF385C";
-                e.currentTarget.style.boxShadow =
-                  "0 2px 4px rgba(255,56,92,0.2)";
-              }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <circle cx="7" cy="7" r="6" />
-                <path d="M12 12l-3-3" />
-              </svg>
-            </button>
+                Șterge filtrele
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -476,46 +964,20 @@ const Home = () => {
       {/* Main Content */}
       <main
         style={{
-          padding: "40px 80px",
+          padding: "48px 80px 80px",
           maxWidth: "1760px",
           margin: "0 auto",
         }}
       >
-        {isAuthenticated && user?.role === UserRole.ROLE_HOST && (
-          <div
-            style={{
-              backgroundColor: "#f7f7f7",
-              padding: "20px 24px",
-              borderRadius: "12px",
-              marginBottom: "32px",
-              border: "1px solid #ebebeb",
-            }}
-          >
-            <p
-              style={{
-                color: "#222",
-                fontWeight: "500",
-                fontSize: "15px",
-                margin: 0,
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <span style={{ fontSize: "18px" }}>✓</span>
-              Felicitări! Ești acum Gazdă! Poți crea și gestiona proprietăți.
-            </p>
-          </div>
-        )}
-
         {/* Properties Section */}
         <div>
           <h2
             style={{
-              fontSize: "22px",
+              fontSize: "24px",
               fontWeight: "600",
-              marginBottom: "32px",
+              marginBottom: "40px",
               color: "#222",
+              letterSpacing: "-0.2px",
             }}
           >
             Exploră locuințe
@@ -531,7 +993,7 @@ const Home = () => {
             >
               Se încarcă proprietățile...
             </div>
-          ) : properties.length === 0 ? (
+          ) : filteredProperties.length === 0 ? (
             <div
               style={{
                 textAlign: "center",
@@ -547,16 +1009,19 @@ const Home = () => {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-                gap: "40px",
+                gap: "32px",
               }}
             >
-              {properties.map((property) => (
+              {filteredProperties.map((property, index) => (
                 <Link
                   key={property.id}
                   to={`/property/${property.id}`}
                   style={{
                     textDecoration: "none",
                     color: "inherit",
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? "translateY(0)" : "translateY(20px)",
+                    transition: `all 0.5s ease-out ${index * 0.05}s`,
                   }}
                 >
                   <div
@@ -569,33 +1034,42 @@ const Home = () => {
                       transition: "transform 0.2s, box-shadow 0.2s",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.transform = "translateY(-4px)";
                       e.currentTarget.style.boxShadow =
-                        "0 4px 12px rgba(0,0,0,0.08)";
+                        "0 6px 16px rgba(0,0,0,0.12)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = "translateY(0)";
                       e.currentTarget.style.boxShadow = "none";
                     }}
                   >
-                    {/* Image Placeholder */}
+                    {/* Image */}
                     <div
                       style={{
                         width: "100%",
-                        height: "240px",
+                        height: "280px",
                         backgroundColor: "#f7f7f7",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         color: "#717171",
                         fontSize: "14px",
+                        position: "relative",
+                        backgroundImage:
+                          property.imageUrls && property.imageUrls.length > 0
+                            ? `url("${property.imageUrls[0]}")`
+                            : "none",
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
                       }}
                     >
-                      Imagine
+                      {(!property.imageUrls ||
+                        property.imageUrls.length === 0) &&
+                        "Imagine"}
                     </div>
 
                     {/* Content */}
-                    <div style={{ padding: "16px" }}>
+                    <div style={{ padding: "20px" }}>
                       <div
                         style={{
                           display: "flex",
@@ -614,6 +1088,7 @@ const Home = () => {
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
+                            lineHeight: "1.4",
                           }}
                         >
                           {property.title}
@@ -624,6 +1099,7 @@ const Home = () => {
                             alignItems: "center",
                             gap: "4px",
                             marginLeft: "8px",
+                            flexShrink: 0,
                           }}
                         >
                           <span style={{ fontSize: "14px" }}>⭐</span>
@@ -641,9 +1117,9 @@ const Home = () => {
 
                       <p
                         style={{
-                          fontSize: "14px",
+                          fontSize: "15px",
                           color: "#717171",
-                          margin: "0 0 8px 0",
+                          margin: "0 0 12px 0",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -655,29 +1131,96 @@ const Home = () => {
                       <div
                         style={{
                           display: "flex",
-                          gap: "8px",
-                          fontSize: "14px",
+                          gap: "12px",
+                          fontSize: "13px",
                           color: "#717171",
-                          marginBottom: "8px",
+                          marginBottom: "16px",
+                          flexWrap: "wrap",
                         }}
                       >
-                        <span>{property.bedrooms} paturi</span>
-                        <span>•</span>
-                        <span>{property.bathrooms} băi</span>
-                        <span>•</span>
-                        <span>Max {property.maxGuests} oaspeți</span>
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M2 4v16M2 8h18M2 12h18M2 16h18M22 4v16" />
+                          </svg>
+                          {property.bedrooms}{" "}
+                          {property.bedrooms === 1 ? "pat" : "paturi"}
+                        </span>
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M4 4h16v16H4zM4 8h16M4 12h16M4 16h16" />
+                          </svg>
+                          {property.bathrooms}{" "}
+                          {property.bathrooms === 1 ? "baie" : "băi"}
+                        </span>
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                          </svg>
+                          {property.maxGuests}{" "}
+                          {property.maxGuests === 1 ? "oaspete" : "oaspeți"}
+                        </span>
                       </div>
 
                       <div
                         style={{
                           display: "flex",
                           alignItems: "baseline",
-                          marginTop: "12px",
+                          marginTop: "16px",
+                          paddingTop: "16px",
+                          borderTop: "1px solid #ebebeb",
                         }}
                       >
                         <span
                           style={{
-                            fontSize: "16px",
+                            fontSize: "18px",
                             fontWeight: "600",
                             color: "#222",
                           }}
@@ -689,6 +1232,7 @@ const Home = () => {
                             fontSize: "14px",
                             color: "#717171",
                             marginLeft: "4px",
+                            fontWeight: "400",
                           }}
                         >
                           / noapte

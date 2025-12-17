@@ -5,9 +5,6 @@ const API_BASE_URL =
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 //interceptor pt a adauga token-ul JWT la fiecare cerere
@@ -28,11 +25,22 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      //token expirat sau invalid, sterge tonken-ul si redirect catre login
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+    const originalRequest = error.config;
+
+    // Dacă primim 401 și nu este o cerere de login/register și nu am încercat deja
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes("/auth/")
+    ) {
+      // Verificăm dacă chiar avem ceva de șters. Dacă nu avem token, nu eram logați oricum.
+      const hasToken = !!localStorage.getItem("token");
+
+      if (hasToken && window.location.pathname !== "/login") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }

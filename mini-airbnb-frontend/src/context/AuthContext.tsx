@@ -4,6 +4,7 @@ import { authService } from "../services/authService";
 import type { LoginRequest, RegisterRequest, UserRole } from "../types";
 
 interface User {
+  id: number;
   email: string;
   role: UserRole;
 }
@@ -47,6 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       authService.saveAuthData(response);
 
       setUser({
+        id: response.id,
         email: response.email,
         role: response.role as UserRole,
       });
@@ -61,6 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       authService.saveAuthData(response);
 
       setUser({
+        id: response.id,
         email: response.email,
         role: response.role as UserRole,
       });

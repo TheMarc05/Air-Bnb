@@ -28,6 +28,7 @@ export interface Property {
   bathrooms: number;
   maxGuests: number;
   isActive: boolean;
+  imageUrls: string[];
   host: User;
   createdAt: string;
   updatedAt: string;
@@ -77,6 +78,7 @@ export interface RegisterRequest {
 export interface AuthResponse {
   token: string;
   type: string;
+  id: number;
   email: string;
   role: string;
 }

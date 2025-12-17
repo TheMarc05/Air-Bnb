@@ -5,7 +5,6 @@ import { propertyService } from "../services/propertyService";
 import { reservationService } from "../services/reservationService";
 import type { Property } from "../types";
 import type { ReservationRequest } from "../types";
-import { UserRole } from "../types";
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +20,7 @@ const PropertyDetails = () => {
     numberOfGuests: 1,
   });
   const [reserving, setReserving] = useState(false);
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
 
   useEffect(() => {
     const loadProperty = async () => {
@@ -112,23 +112,86 @@ const PropertyDetails = () => {
     );
   }
 
-  const isHost = user?.role === UserRole.ROLE_HOST || user?.role === UserRole.ROLE_ADMIN;
   const isOwner = user?.id === property.host.id;
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#fff" }}>
+      {/* Full Photo Modal */}
+      {showAllPhotos && property.imageUrls && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "#fff",
+            zIndex: 2000,
+            overflowY: "auto",
+            padding: "40px",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: "800px",
+              margin: "0 auto",
+            }}
+          >
+            <button
+              onClick={() => setShowAllPhotos(false)}
+              style={{
+                position: "fixed",
+                top: "20px",
+                left: "20px",
+                padding: "10px 20px",
+                backgroundColor: "#f7f7f7",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "600",
+              }}
+            >
+              ← Înapoi
+            </button>
+            <h2 style={{ marginBottom: "32px", fontSize: "24px" }}>
+              Toate pozele ({property.imageUrls.length})
+            </h2>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+              }}
+            >
+              {property.imageUrls.map((url, index) => (
+                <img
+                  key={index}
+                  src={url}
+                  alt={`Proprietate ${index + 1}`}
+                  style={{
+                    width: "100%",
+                    borderRadius: "12px",
+                    display: "block",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          padding: "24px 80px",
+          padding: "20px 80px",
           borderBottom: "1px solid #ebebeb",
           position: "sticky",
           top: 0,
           backgroundColor: "#fff",
           zIndex: 100,
+          backdropFilter: "blur(10px)",
         }}
       >
         <Link
@@ -138,14 +201,21 @@ const PropertyDetails = () => {
             alignItems: "center",
             textDecoration: "none",
             color: "#FF385C",
-            fontSize: "20px",
+            fontSize: "18px",
             fontWeight: "600",
-            letterSpacing: "-0.3px",
+            letterSpacing: "-0.2px",
+            transition: "opacity 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = "0.8";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = "1";
           }}
         >
           <svg
-            width="32"
-            height="32"
+            width="30"
+            height="30"
             viewBox="0 0 32 32"
             fill="none"
             style={{ marginRight: "8px" }}
@@ -168,6 +238,15 @@ const PropertyDetails = () => {
             textDecoration: "none",
             fontSize: "14px",
             fontWeight: "500",
+            padding: "8px 16px",
+            borderRadius: "22px",
+            transition: "background-color 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#f7f7f7";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
           }}
         >
           ← Înapoi
@@ -175,8 +254,16 @@ const PropertyDetails = () => {
       </header>
 
       {/* Main Content */}
-      <div style={{ maxWidth: "1760px", margin: "0 auto", padding: "40px 80px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: "80px" }}>
+      <div
+        style={{ maxWidth: "1760px", margin: "0 auto", padding: "40px 80px" }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 400px",
+            gap: "80px",
+          }}
+        >
           {/* Left Column - Property Details */}
           <div>
             {/* Title */}
@@ -197,14 +284,16 @@ const PropertyDetails = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "12px",
-                marginBottom: "24px",
+                marginBottom: "32px",
               }}
             >
-              <span style={{ fontSize: "14px", color: "#717171" }}>
-                {property.city}, {property.country}
-              </span>
-              <span style={{ fontSize: "14px", color: "#717171" }}>•</span>
-              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
                 <span style={{ fontSize: "14px" }}>⭐</span>
                 <span
                   style={{
@@ -216,9 +305,20 @@ const PropertyDetails = () => {
                   4.8
                 </span>
               </div>
+              <span style={{ color: "#717171" }}>•</span>
+              <span
+                style={{
+                  fontSize: "14px",
+                  color: "#222",
+                  textDecoration: "underline",
+                  fontWeight: "600",
+                }}
+              >
+                {property.city}, {property.country}
+              </span>
             </div>
 
-            {/* Image Placeholder */}
+            {/* Image Section */}
             <div
               style={{
                 width: "100%",
@@ -231,9 +331,39 @@ const PropertyDetails = () => {
                 justifyContent: "center",
                 color: "#717171",
                 fontSize: "14px",
+                backgroundImage:
+                  property.imageUrls && property.imageUrls.length > 0
+                    ? `url("${property.imageUrls[0]}")`
+                    : "none",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
-              Imagine proprietate
+              {(!property.imageUrls || property.imageUrls.length === 0) &&
+                "Imagine proprietate"}
+
+              {property.imageUrls && property.imageUrls.length > 1 && (
+                <div
+                  onClick={() => setShowAllPhotos(true)}
+                  style={{
+                    position: "absolute",
+                    bottom: "20px",
+                    right: "20px",
+                    backgroundColor: "rgba(255, 255, 255, 0.9)",
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    color: "#222",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Vezi toate cele {property.imageUrls.length} poze
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -281,38 +411,129 @@ const PropertyDetails = () => {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "24px",
+                  gap: "32px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ fontSize: "20px" }}>🛏️</span>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "16px" }}
+                >
+                  <div style={{ color: "#222" }}>
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M2 4v16M2 8h18M2 12h18M2 16h18M22 4v16" />
+                    </svg>
+                  </div>
                   <div>
-                    <div style={{ fontSize: "16px", fontWeight: "600", color: "#222" }}>
-                      {property.bedrooms} {property.bedrooms === 1 ? "pat" : "paturi"}
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        color: "#222",
+                      }}
+                    >
+                      {property.bedrooms}{" "}
+                      {property.bedrooms === 1 ? "dormitor" : "dormitoare"}
                     </div>
-                    <div style={{ fontSize: "14px", color: "#717171" }}>Dormitoare</div>
+                    <div style={{ fontSize: "14px", color: "#717171" }}>
+                      Dormitoare
+                    </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ fontSize: "20px" }}>🚿</span>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "16px" }}
+                >
+                  <div style={{ color: "#222" }}>
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M4 4h16v16H4zM4 8h16M4 12h16M4 16h16" />
+                    </svg>
+                  </div>
                   <div>
-                    <div style={{ fontSize: "16px", fontWeight: "600", color: "#222" }}>
-                      {property.bathrooms} {property.bathrooms === 1 ? "baie" : "băi"}
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        color: "#222",
+                      }}
+                    >
+                      {property.bathrooms}{" "}
+                      {property.bathrooms === 1 ? "baie" : "băi"}
                     </div>
-                    <div style={{ fontSize: "14px", color: "#717171" }}>Băi</div>
+                    <div style={{ fontSize: "14px", color: "#717171" }}>
+                      Băi
+                    </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ fontSize: "20px" }}>👥</span>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "16px" }}
+                >
+                  <div style={{ color: "#222" }}>
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                  </div>
                   <div>
-                    <div style={{ fontSize: "16px", fontWeight: "600", color: "#222" }}>
-                      Max {property.maxGuests} {property.maxGuests === 1 ? "oaspete" : "oaspeți"}
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        color: "#222",
+                      }}
+                    >
+                      Max {property.maxGuests}{" "}
+                      {property.maxGuests === 1 ? "oaspete" : "oaspeți"}
                     </div>
-                    <div style={{ fontSize: "14px", color: "#717171" }}>Capacitate</div>
+                    <div style={{ fontSize: "14px", color: "#717171" }}>
+                      Capacitate
+                    </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ fontSize: "20px" }}>📍</span>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "16px" }}
+                >
+                  <div style={{ color: "#222" }}>
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                  </div>
                   <div>
                     <div
                       style={{
@@ -323,7 +544,9 @@ const PropertyDetails = () => {
                     >
                       {property.address}
                     </div>
-                    <div style={{ fontSize: "14px", color: "#717171" }}>Adresă</div>
+                    <div style={{ fontSize: "14px", color: "#717171" }}>
+                      Adresă
+                    </div>
                   </div>
                 </div>
               </div>
@@ -331,7 +554,9 @@ const PropertyDetails = () => {
           </div>
 
           {/* Right Column - Reservation Card */}
-          <div style={{ position: "sticky", top: "100px", height: "fit-content" }}>
+          <div
+            style={{ position: "sticky", top: "100px", height: "fit-content" }}
+          >
             <div
               style={{
                 border: "1px solid #ebebeb",
@@ -362,9 +587,20 @@ const PropertyDetails = () => {
                       / noapte
                     </span>
                   </div>
-                  <p style={{ fontSize: "14px", color: "#717171", marginTop: "16px" }}>
-                    Aceasta este proprietatea ta. Nu poți face rezervări pentru propria
-                    proprietate.
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      color: "#717171",
+                      marginTop: "16px",
+                      fontWeight: "600",
+                      textAlign: "center",
+                      padding: "12px",
+                      backgroundColor: "#f7f7f7",
+                      borderRadius: "8px",
+                      border: "1px solid #ddd",
+                    }}
+                  >
+                    Nu poți închiria deoarece ești host-ul!
                   </p>
                 </div>
               ) : (
@@ -508,7 +744,10 @@ const PropertyDetails = () => {
                       borderRadius: "8px",
                       fontSize: "16px",
                       fontWeight: "600",
-                      cursor: isAuthenticated && !reserving ? "pointer" : "not-allowed",
+                      cursor:
+                        isAuthenticated && !reserving
+                          ? "pointer"
+                          : "not-allowed",
                       transition: "all 0.2s",
                     }}
                     onMouseEnter={(e) => {
@@ -539,4 +778,3 @@ const PropertyDetails = () => {
 };
 
 export default PropertyDetails;
-

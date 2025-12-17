@@ -3,6 +3,7 @@ package com.airbnb.miniairbnb.config;
 import com.airbnb.miniairbnb.repository.UserRepository;
 import com.airbnb.miniairbnb.security.CustomUserDetailsService;
 import com.airbnb.miniairbnb.security.JwtAuthenticationFilter;
+import com.airbnb.miniairbnb.security.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,6 +21,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.http.HttpMethod;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.Arrays;
 import java.util.List;
@@ -52,20 +55,34 @@ public class SecurityConfig {
         return authProvider;
     }
 
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtTokenProvider tokenProvider, UserDetailsService userDetailsService) {
+        return new JwtAuthenticationFilter(tokenProvider, userDetailsService);
+    }
 
     //configurare security filter chain
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager, UserRepository userRepository, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS primul!
                 .csrf(csrf -> csrf.disable()) //dezactivare CSRF pt API REST
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) //CORS pt React, spring va injecta automat bean-ul
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) //JWT va fi stateless
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            // Trimitem 401 în loc de 403 pentru cereri neautentificate sau token invalid
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"message\": \"Eroare de autentificare: Token invalid sau lipsa\"}");
+                        })
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() //permite preflight requests
-                        .requestMatchers("/api/auth/**").permitAll() //endpoint-uri publice pt autentificare
+                        .requestMatchers("/api/auth/login", "/api/auth/register").permitAll() //endpoint-uri publice pt autentificare
+                        .requestMatchers("/api/auth/become-host").authenticated() //necesita autentificare pt a deveni host
                         .requestMatchers("/api/public/**").permitAll() //alte endpoint-uri publice
                         .requestMatchers(HttpMethod.GET, "/api/properties", "/api/properties/**").permitAll() //permite accesul la proprietati fara autentificare
+                        .requestMatchers("/uploads/**").permitAll() //permite accesul la poze
                         .anyRequest().authenticated()) //toate celelalte endpoint-uri necesita autentificare
                 .authenticationProvider(authenticationProvider(
                         userDetailsService(userRepository),
@@ -77,11 +94,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173")); //porturile React/Vite
+        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000")); // porturile React/Vite
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("*")); // Permitem toate headerele pentru a evita conflictele de preflight
         configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L); //cache preflight requests pentru 1 ora
+        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setMaxAge(3600L); // cache preflight requests pentru 1 ora
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class AuthController {
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
@@ -64,6 +63,7 @@ public class AuthController {
             //returneaza raspuns cu token
             AuthResponse authResponse = new AuthResponse(
                     token,
+                    user.getId(),
                     user.getEmail(),
                     user.getRole().name()
             );
@@ -82,7 +82,7 @@ public class AuthController {
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             //autentifica utilizatorul
-            Authentication authentication = authenticationManager.authenticate(
+            authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.getEmail(),
                             loginRequest.getPassword()
@@ -100,6 +100,7 @@ public class AuthController {
             //returneaza raspuns cu token
             AuthResponse authResponse = new AuthResponse(
                     token,
+                    user.getId(),
                     user.getEmail(),
                     user.getRole().name()
             );
@@ -134,6 +135,7 @@ public class AuthController {
 
             AuthResponse authResponse = new AuthResponse(
                     token,
+                    user.getId(),
                     user.getEmail(),
                     user.getRole().name()
             );

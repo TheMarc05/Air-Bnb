@@ -73,6 +73,9 @@ public class PropertyServiceImpl implements PropertyService {
         if (propertyDetails.getIsActive() != null) {
             existingProperty.setIsActive(propertyDetails.getIsActive());
         }
+        if (propertyDetails.getImageUrls() != null) {
+            existingProperty.setImageUrls(propertyDetails.getImageUrls());
+        }
 
         return propertyRepository.save(existingProperty);
     }

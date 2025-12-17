@@ -9,12 +9,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-@Component
+// ELIMINĂM @Component pentru a evita înregistrarea dublă de către Spring Boot
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
@@ -58,7 +57,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication); //seteaza authentication in SecurityContext
                 }
             } catch (Exception e) {
-                logger.error("Cannot set user authentication: {}", e); //log error
+                // Dacă token-ul este invalid sau expirat, curățăm contextul pentru a trata cererea ca anonimă
+                // Rutele permitAll vor funcționa în continuare, cele protejate vor da 401/403 ulterior
+                SecurityContextHolder.clearContext();
             }
         }
 

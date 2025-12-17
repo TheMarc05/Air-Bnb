@@ -5,20 +5,27 @@ import com.airbnb.miniairbnb.model.User;
 import com.airbnb.miniairbnb.model.UserRole;
 import com.airbnb.miniairbnb.service.PropertyService;
 import com.airbnb.miniairbnb.service.UserService;
-import jakarta.validation.Valid;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/properties")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class PropertyController {
     private final PropertyService propertyService;
     private final UserService userService;
@@ -86,8 +93,11 @@ public class PropertyController {
     }
 
     // POST /api/properties - creeazaa o proprietate noua (pt host sau admin)
-    @PostMapping
-    public ResponseEntity<?> createProperty(@Valid @RequestBody Property property) {
+    @PostMapping(consumes = {"multipart/form-data"})
+    public ResponseEntity<?> createProperty(
+            @RequestPart("property") String propertyJson,
+            @RequestPart(value = "images", required = false) MultipartFile[] images) {
+        
         User currentUser = getCurrentUser();
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -99,25 +109,81 @@ public class PropertyController {
         }
 
         try {
+            // Mapăm JSON-ul manual către obiectul Property
+            ObjectMapper objectMapper = new ObjectMapper();
+            // Înregistrăm modulele necesare pentru Java 8 date/time
+            objectMapper.findAndRegisterModules();
+            Property property = objectMapper.readValue(propertyJson, Property.class);
+            
+            List<String> imageUrls = new ArrayList<>();
+            if (images != null) {
+                String uploadDir = "uploads/";
+                Files.createDirectories(Paths.get(uploadDir));
+
+                for (MultipartFile image : images) {
+                    if (image.isEmpty()) continue;
+                    // Curățăm numele fișierului de spații pentru a evita problemele de URL
+                    String originalFilename = image.getOriginalFilename() != null ? image.getOriginalFilename().replace(" ", "_") : "image";
+                    String fileName = UUID.randomUUID().toString() + "_" + originalFilename;
+                    Path filePath = Paths.get(uploadDir + fileName);
+                    Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+                    imageUrls.add("http://localhost:8080/uploads/" + fileName);
+                }
+            }
+            property.setImageUrls(imageUrls);
+
             Property createdProperty = propertyService.createProperty(property, currentUser);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdProperty);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error uploading images: " + e.getMessage());
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
     // PUT /api/properties/{id} - actualizeaza o proprietate (pt host sau admin)
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateProperty(@PathVariable Long id,
-                                            @Valid @RequestBody Property propertyDetails) {
+    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
+    public ResponseEntity<?> updateProperty(
+            @PathVariable Long id,
+            @RequestPart("property") String propertyJson,
+            @RequestPart(value = "images", required = false) MultipartFile[] images) {
+        
         User currentUser = getCurrentUser();
         if (currentUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.findAndRegisterModules();
+            Property propertyDetails = objectMapper.readValue(propertyJson, Property.class);
+
+            if (images != null && images.length > 0) {
+                String uploadDir = "uploads/";
+                Files.createDirectories(Paths.get(uploadDir));
+                
+                List<String> newImageUrls = new ArrayList<>();
+                // Păstrăm imaginile existente dacă vin în JSON
+                if (propertyDetails.getImageUrls() != null) {
+                    newImageUrls.addAll(propertyDetails.getImageUrls());
+                }
+
+                for (MultipartFile image : images) {
+                    if (image.isEmpty()) continue;
+                    // Curățăm numele fișierului de spații pentru a evita problemele de URL
+                    String originalFilename = image.getOriginalFilename() != null ? image.getOriginalFilename().replace(" ", "_") : "image";
+                    String fileName = UUID.randomUUID().toString() + "_" + originalFilename;
+                    Path filePath = Paths.get(uploadDir + fileName);
+                    Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+                    newImageUrls.add("http://localhost:8080/uploads/" + fileName);
+                }
+                propertyDetails.setImageUrls(newImageUrls);
+            }
+
             Property updatedProperty = propertyService.updateProperty(id, propertyDetails, currentUser);
             return ResponseEntity.ok(updatedProperty);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error uploading images: " + e.getMessage());
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }

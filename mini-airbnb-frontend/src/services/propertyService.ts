@@ -31,18 +31,37 @@ export const propertyService = {
 
   //creeaza o proprietate noua
   createProperty: async (
-    property: Omit<Property, "id" | "host" | "createdAt" | "updatedAt">
+    property: Omit<
+      Property,
+      "id" | "host" | "createdAt" | "updatedAt" | "isActive"
+    >,
+    images: File[]
   ): Promise<Property> => {
-    const response = await api.post<Property>("/properties", property);
+    const formData = new FormData();
+    formData.append("property", JSON.stringify(property));
+    images.forEach((image) => {
+      formData.append("images", image);
+    });
+
+    const response = await api.post<Property>("/properties", formData);
     return response.data;
   },
 
   //actualizeaza o proprietate
   updateProperty: async (
     id: number,
-    property: Partial<Property>
+    property: Partial<Property>,
+    images?: File[]
   ): Promise<Property> => {
-    const response = await api.put<Property>(`/properties/${id}`, property);
+    const formData = new FormData();
+    formData.append("property", JSON.stringify(property));
+    if (images) {
+      images.forEach((image) => {
+        formData.append("images", image);
+      });
+    }
+
+    const response = await api.put<Property>(`/properties/${id}`, formData);
     return response.data;
   },
 
