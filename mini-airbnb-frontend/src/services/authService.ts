@@ -41,4 +41,10 @@ export const authService = {
       })
     );
   },
+
+  //devino host
+  becomeHost: async (): Promise<AuthResponse> => {
+    const response = await api.post<AuthResponse>("/auth/become-host");
+    return response.data;
+  },
 };

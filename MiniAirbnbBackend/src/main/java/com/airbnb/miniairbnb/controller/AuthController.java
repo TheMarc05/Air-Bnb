@@ -4,6 +4,7 @@ import com.airbnb.miniairbnb.dto.AuthResponse;
 import com.airbnb.miniairbnb.dto.LoginRequest;
 import com.airbnb.miniairbnb.dto.RegisterRequest;
 import com.airbnb.miniairbnb.model.User;
+import com.airbnb.miniairbnb.model.UserRole;
 import com.airbnb.miniairbnb.security.CustomUserDetailsService;
 import com.airbnb.miniairbnb.security.JwtTokenProvider;
 import com.airbnb.miniairbnb.service.UserService;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
@@ -108,6 +110,37 @@ public class AuthController {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body("Invalid email or password");
+        }
+    }
+
+    @PostMapping("/become-host")
+    public ResponseEntity<?> becomeHost(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User user = userService.findUserByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            //verifica daca utilizatorul este deja host sau admin
+            if (user.getRole() == UserRole.ROLE_HOST || user.getRole() == UserRole.ROLE_ADMIN) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("User is already a host or admin");
+            }
+
+            //actualizeaza rolul la host
+            user = userService.updateUserRole(user.getId(), UserRole.ROLE_HOST);
+
+            //genereaza un token nou cu noul rol
+            UserDetails updatedUserDetails = userDetailsService.loadUserByUsername(user.getEmail());
+            String token = jwtTokenProvider.generateToken(updatedUserDetails);
+
+            AuthResponse authResponse = new AuthResponse(
+                    token,
+                    user.getEmail(),
+                    user.getRole().name()
+            );
+
+            return ResponseEntity.ok(authResponse);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 }

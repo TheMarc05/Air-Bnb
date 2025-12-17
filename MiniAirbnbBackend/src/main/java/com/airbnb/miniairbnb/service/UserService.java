@@ -18,4 +18,6 @@ public interface UserService {
     boolean emailExists(String email); //verifica daca un email exista deja
 
     List<User> findAllUsers(); //gaseste toti utilizatorii, doar adminul
+
+    User updateUserRole(Long userId, UserRole newRole);
 }
