@@ -47,11 +47,6 @@ public class ReservationController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if (currentUser.getRole() != UserRole.ROLE_GUEST && currentUser.getRole() != UserRole.ROLE_ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Only GUEST or ADMIN can create reservations");
-        }
-
         try {
             Reservation reservation = reservationService.createReservation(
                     request.getPropertyId(),
@@ -104,6 +99,22 @@ public class ReservationController {
 
         try {
             Reservation reservation = reservationService.confirmReservation(id, currentUser);
+            return ResponseEntity.ok(reservation);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // PUT /api/reservations/{id}/complete - finalizeaza o rezervare (pt host sau admin)
+    @PutMapping("/{id}/complete")
+    public ResponseEntity<?> completeReservation(@PathVariable Long id) {
+        User currentUser = getCurrentUser();
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            Reservation reservation = reservationService.completeReservation(id, currentUser);
             return ResponseEntity.ok(reservation);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

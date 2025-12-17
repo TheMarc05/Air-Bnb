@@ -5,6 +5,7 @@ import { propertyService } from "../services/propertyService";
 import { reservationService } from "../services/reservationService";
 import type { Property } from "../types";
 import type { ReservationRequest } from "../types";
+import ConfirmationModal from "../components/ConfirmationModal";
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,21 @@ const PropertyDetails = () => {
   });
   const [reserving, setReserving] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
+
+  // State pentru modal
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: "danger" | "info" | "success";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "info",
+  });
 
   useEffect(() => {
     const loadProperty = async () => {
@@ -51,20 +67,28 @@ const PropertyDetails = () => {
       return;
     }
 
-    setReserving(true);
-    try {
-      await reservationService.createReservation(reservationData);
-      alert("Rezervare creată cu succes! Așteaptă confirmarea de la gazdă.");
-      navigate("/");
-    } catch (err: any) {
-      alert(
-        err.response?.data?.message ||
-          err.message ||
-          "Eroare la crearea rezervării. Te rugăm să încerci din nou."
-      );
-    } finally {
-      setReserving(false);
-    }
+    setModalConfig({
+      isOpen: true,
+      title: "Confirmă rezervarea",
+      message: `Ești sigur că vrei să rezervi această proprietate pentru perioada ${reservationData.checkInDate} - ${reservationData.checkOutDate}?`,
+      type: "success",
+      onConfirm: async () => {
+        setReserving(true);
+        try {
+          await reservationService.createReservation(reservationData);
+          alert("Rezervare creată cu succes! Așteaptă confirmarea de la gazdă.");
+          navigate("/");
+        } catch (err: any) {
+          alert(
+            err.response?.data?.message ||
+              err.message ||
+              "Eroare la crearea rezervării. Te rugăm să încerci din nou."
+          );
+        } finally {
+          setReserving(false);
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -773,6 +797,15 @@ const PropertyDetails = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={() => setModalConfig({ ...modalConfig, isOpen: false })}
+      />
     </div>
   );
 };

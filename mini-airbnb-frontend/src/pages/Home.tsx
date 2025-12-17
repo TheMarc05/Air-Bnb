@@ -5,6 +5,7 @@ import { authService } from "../services/authService";
 import { propertyService } from "../services/propertyService";
 import { UserRole } from "../types";
 import type { Property } from "../types";
+import ConfirmationModal from "../components/ConfirmationModal";
 
 const Home = () => {
   const { user, isAuthenticated, updateUser, logout } = useAuth();
@@ -24,6 +25,21 @@ const Home = () => {
     minBedrooms: "",
     minBathrooms: "",
     maxGuests: "",
+  });
+
+  // State pentru modal
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: "danger" | "info" | "success";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "info",
   });
 
   useEffect(() => {
@@ -49,27 +65,49 @@ const Home = () => {
       user?.role === UserRole.ROLE_HOST ||
       user?.role === UserRole.ROLE_ADMIN
     ) {
-      alert("You are already a host!");
+      alert("Ești deja gazdă!");
       return;
     }
 
-    setBecomingHost(true);
-    try {
-      const response = await authService.becomeHost();
-      authService.saveAuthData(response);
-      updateUser({
-        id: response.id,
-        email: response.email,
-        role: response.role as UserRole,
-      });
-      // Afișează modal-ul de succes
-      setShowHostModal(true);
-    } catch (error) {
-      alert("Failed to become a host. Please try again.");
-      console.error(error);
-    } finally {
-      setBecomingHost(false);
-    }
+    setModalConfig({
+      isOpen: true,
+      title: "Devino gazdă",
+      message:
+        "Vrei să devii gazdă pe Airbnb? Vei putea să îți publici propriile proprietăți și să primești rezervări.",
+      type: "success",
+      onConfirm: async () => {
+        setBecomingHost(true);
+        try {
+          const response = await authService.becomeHost();
+          authService.saveAuthData(response);
+          updateUser({
+            id: response.id,
+            email: response.email,
+            role: response.role as UserRole,
+          });
+          setShowHostModal(true);
+        } catch (error) {
+          alert("Eroare la schimbarea rolului. Te rugăm să încerci din nou.");
+          console.error(error);
+        } finally {
+          setBecomingHost(false);
+        }
+      },
+    });
+  };
+
+  const handleLogout = () => {
+    setModalConfig({
+      isOpen: true,
+      title: "Deconectare",
+      message: "Ești sigur că vrei să te deconectezi?",
+      type: "info",
+      onConfirm: () => {
+        logout();
+        setShowUserMenu(false);
+        navigate("/");
+      },
+    });
   };
 
   useEffect(() => {
@@ -554,11 +592,7 @@ const Home = () => {
                       }}
                     />
                     <button
-                      onClick={() => {
-                        logout();
-                        setShowUserMenu(false);
-                        navigate("/");
-                      }}
+                      onClick={handleLogout}
                       style={{
                         width: "100%",
                         padding: "12px 16px",
@@ -980,7 +1014,7 @@ const Home = () => {
               letterSpacing: "-0.2px",
             }}
           >
-            Exploră locuințe
+            Explorează locuințe
           </h2>
           {loading ? (
             <div
@@ -1246,6 +1280,15 @@ const Home = () => {
           )}
         </div>
       </main>
+
+      <ConfirmationModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={() => setModalConfig({ ...modalConfig, isOpen: false })}
+      />
     </div>
   );
 };

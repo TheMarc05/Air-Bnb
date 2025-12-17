@@ -32,6 +32,14 @@ export const reservationService = {
     return response.data;
   },
 
+  // Finalizează o rezervare (pentru host)
+  completeReservation: async (reservationId: number): Promise<Reservation> => {
+    const response = await api.put<Reservation>(
+      `/reservations/${reservationId}/complete`
+    );
+    return response.data;
+  },
+
   // Anulează o rezervare
   cancelReservation: async (reservationId: number): Promise<Reservation> => {
     const response = await api.put<Reservation>(

@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { reservationService } from "../services/reservationService";
 import { UserRole, ReservationStatus } from "../types";
 import type { Reservation } from "../types";
+import ConfirmationModal from "../components/ConfirmationModal";
 
 const MyReservations = () => {
   const { isAuthenticated, user } = useAuth();
@@ -13,6 +14,24 @@ const MyReservations = () => {
   const [error, setError] = useState("");
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<"trips" | "received">("trips");
+
+  // State pentru modal
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: "danger" | "info" | "success";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "info",
+  });
+
+  const isHost = user?.role === UserRole.ROLE_HOST || user?.role === UserRole.ROLE_ADMIN;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -21,16 +40,13 @@ const MyReservations = () => {
     }
 
     loadReservations().then(() => setIsVisible(true));
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.role, activeTab]);
 
   const loadReservations = async () => {
     try {
       setLoading(true);
       let data: Reservation[];
-      if (
-        user?.role === UserRole.ROLE_HOST ||
-        user?.role === UserRole.ROLE_ADMIN
-      ) {
+      if (activeTab === "received" && isHost) {
         data = await reservationService.getHostReservations();
       } else {
         data = await reservationService.getMyReservations();
@@ -48,41 +64,63 @@ const MyReservations = () => {
   };
 
   const handleConfirm = async (id: number) => {
-    try {
-      setProcessingId(id);
-      await reservationService.confirmReservation(id);
-      await loadReservations();
-    } catch (err: any) {
-      alert(
-        err.response?.data?.message ||
-          err.message ||
-          "Eroare la confirmarea rezervării."
-      );
-    } finally {
-      setProcessingId(null);
-    }
+    setModalConfig({
+      isOpen: true,
+      title: "Confirmă rezervarea",
+      message: "Ești sigur că vrei să confirmi această rezervare? Această acțiune va anunța oaspetele.",
+      type: "success",
+      onConfirm: async () => {
+        try {
+          setProcessingId(id);
+          await reservationService.confirmReservation(id);
+          await loadReservations();
+        } catch (err: any) {
+          alert(err.response?.data?.message || err.message || "Eroare la confirmarea rezervării.");
+        } finally {
+          setProcessingId(null);
+        }
+      },
+    });
+  };
+
+  const handleComplete = async (id: number) => {
+    setModalConfig({
+      isOpen: true,
+      title: "Finalizează rezervarea",
+      message: "Vrei să marchezi această rezervare ca finalizată? Asigură-te că șederea s-a încheiat.",
+      type: "info",
+      onConfirm: async () => {
+        try {
+          setProcessingId(id);
+          await reservationService.completeReservation(id);
+          await loadReservations();
+        } catch (err: any) {
+          alert(err.response?.data?.message || err.message || "Eroare la finalizarea rezervării.");
+        } finally {
+          setProcessingId(null);
+        }
+      },
+    });
   };
 
   const handleCancel = async (id: number) => {
-    if (
-      !window.confirm("Ești sigur că vrei să anulezi această rezervare?")
-    ) {
-      return;
-    }
-
-    try {
-      setProcessingId(id);
-      await reservationService.cancelReservation(id);
-      await loadReservations();
-    } catch (err: any) {
-      alert(
-        err.response?.data?.message ||
-          err.message ||
-          "Eroare la anularea rezervării."
-      );
-    } finally {
-      setProcessingId(null);
-    }
+    setModalConfig({
+      isOpen: true,
+      title: "Anulează rezervarea",
+      message: "Ești sigur că vrei să anulezi această rezervare? Această acțiune este ireversibilă.",
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          setProcessingId(id);
+          await reservationService.cancelReservation(id);
+          await loadReservations();
+        } catch (err: any) {
+          alert(err.response?.data?.message || err.message || "Eroare la anularea rezervării.");
+        } finally {
+          setProcessingId(null);
+        }
+      },
+    });
   };
 
   const getStatusColor = (status: ReservationStatus) => {
@@ -127,8 +165,6 @@ const MyReservations = () => {
   if (!isAuthenticated) {
     return null;
   }
-
-  const isHost = user?.role === UserRole.ROLE_HOST || user?.role === UserRole.ROLE_ADMIN;
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#fff" }}>
@@ -223,20 +259,65 @@ const MyReservations = () => {
             letterSpacing: "-0.4px",
           }}
         >
-          {isHost ? "Rezervările mele (Host)" : "Rezervările mele"}
+          Rezervările mele
         </h1>
         <p
           style={{
             fontSize: "15px",
             color: "#717171",
-            marginBottom: "48px",
+            marginBottom: "32px",
             lineHeight: "1.5",
           }}
         >
           {isHost
-            ? "Gestionează rezervările pentru proprietățile tale"
-            : "Vezi toate rezervările tale"}
+            ? "Gestionează călătoriile tale sau rezervările primite ca gazdă"
+            : "Vezi toate călătoriile tale viitoare sau trecute"}
         </p>
+
+        {/* Tabs for Host */}
+        {isHost && (
+          <div
+            style={{
+              display: "flex",
+              gap: "32px",
+              borderBottom: "1px solid #ebebeb",
+              marginBottom: "40px",
+            }}
+          >
+            <button
+              onClick={() => setActiveTab("trips")}
+              style={{
+                padding: "12px 0",
+                fontSize: "16px",
+                fontWeight: activeTab === "trips" ? "600" : "400",
+                color: activeTab === "trips" ? "#222" : "#717171",
+                backgroundColor: "transparent",
+                border: "none",
+                borderBottom: activeTab === "trips" ? "2px solid #222" : "2px solid transparent",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              Călătoriile mele 🎒
+            </button>
+            <button
+              onClick={() => setActiveTab("received")}
+              style={{
+                padding: "12px 0",
+                fontSize: "16px",
+                fontWeight: activeTab === "received" ? "600" : "400",
+                color: activeTab === "received" ? "#222" : "#717171",
+                backgroundColor: "transparent",
+                border: "none",
+                borderBottom: activeTab === "received" ? "2px solid #222" : "2px solid transparent",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              Rezervări primite 🏠
+            </button>
+          </div>
+        )}
 
         {error && (
           <div
@@ -292,7 +373,7 @@ const MyReservations = () => {
                 marginBottom: "8px",
               }}
             >
-              Nu ai rezervări
+              Nu ai rezervări aici
             </h3>
             <p
               style={{
@@ -300,7 +381,7 @@ const MyReservations = () => {
                 color: "#717171",
               }}
             >
-              {isHost
+              {activeTab === "received"
                 ? "Nu există rezervări pentru proprietățile tale încă"
                 : "Nu ai făcut nicio rezervare încă"}
             </p>
@@ -315,6 +396,8 @@ const MyReservations = () => {
           >
             {reservations.map((reservation, index) => {
               const statusStyle = getStatusColor(reservation.status);
+              const isTrip = activeTab === "trips";
+              
               return (
                 <div
                   key={reservation.id}
@@ -394,8 +477,8 @@ const MyReservations = () => {
                           margin: 0,
                         }}
                       >
-                        {isHost
-                          ? `Oaspete: ${reservation.guest.firstName} ${reservation.guest.lastName}`
+                        {!isTrip
+                          ? `Oaspete: ${reservation.guest.firstName} ${reservation.guest.lastName} (${reservation.guest.email})`
                           : `Gazdă: ${reservation.property.host.firstName} ${reservation.property.host.lastName}`}
                       </p>
                     </div>
@@ -551,43 +634,52 @@ const MyReservations = () => {
                     >
                       Vezi proprietatea
                     </Link>
-                    {isHost &&
-                      reservation.status === ReservationStatus.PENDING && (
-                        <button
-                          onClick={() => handleConfirm(reservation.id)}
-                          disabled={processingId === reservation.id}
-                          style={{
-                            padding: "10px 20px",
-                            backgroundColor:
-                              processingId === reservation.id ? "#ddd" : "#222",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "8px",
-                            fontSize: "14px",
-                            fontWeight: "600",
-                            cursor:
-                              processingId === reservation.id
-                                ? "not-allowed"
-                                : "pointer",
-                            transition: "all 0.2s",
-                            opacity: processingId === reservation.id ? 0.7 : 1,
-                          }}
-                          onMouseEnter={(e) => {
-                            if (processingId !== reservation.id) {
-                              e.currentTarget.style.backgroundColor = "#000";
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (processingId !== reservation.id) {
-                              e.currentTarget.style.backgroundColor = "#222";
-                            }
-                          }}
-                        >
-                          {processingId === reservation.id
-                            ? "..."
-                            : "Confirmă"}
-                        </button>
-                      )}
+
+                    {/* Host Specific Actions */}
+                    {!isTrip && (
+                      <>
+                        {reservation.status === ReservationStatus.PENDING && (
+                          <button
+                            onClick={() => handleConfirm(reservation.id)}
+                            disabled={processingId === reservation.id}
+                            style={{
+                              padding: "10px 20px",
+                              backgroundColor: "#222",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "8px",
+                              fontSize: "14px",
+                              fontWeight: "600",
+                              cursor: processingId === reservation.id ? "not-allowed" : "pointer",
+                              transition: "all 0.2s",
+                            }}
+                          >
+                            Confirmă ✅
+                          </button>
+                        )}
+                        {reservation.status === ReservationStatus.CONFIRMED && (
+                          <button
+                            onClick={() => handleComplete(reservation.id)}
+                            disabled={processingId === reservation.id}
+                            style={{
+                              padding: "10px 20px",
+                              backgroundColor: "#0284c7",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "8px",
+                              fontSize: "14px",
+                              fontWeight: "600",
+                              cursor: processingId === reservation.id ? "not-allowed" : "pointer",
+                              transition: "all 0.2s",
+                            }}
+                          >
+                            Finalizează ✨
+                          </button>
+                        )}
+                      </>
+                    )}
+
+                    {/* Cancel Action (Available for both if pending/confirmed) */}
                     {(reservation.status === ReservationStatus.PENDING ||
                       reservation.status === ReservationStatus.CONFIRMED) && (
                       <button
@@ -595,38 +687,17 @@ const MyReservations = () => {
                         disabled={processingId === reservation.id}
                         style={{
                           padding: "10px 20px",
-                          backgroundColor:
-                            processingId === reservation.id
-                              ? "#ddd"
-                              : "#fff5f5",
-                          color:
-                            processingId === reservation.id
-                              ? "#999"
-                              : "#c53030",
+                          backgroundColor: "#fff5f5",
+                          color: "#c53030",
                           border: "1px solid #feb2b2",
                           borderRadius: "8px",
                           fontSize: "14px",
                           fontWeight: "600",
-                          cursor:
-                            processingId === reservation.id
-                              ? "not-allowed"
-                              : "pointer",
+                          cursor: processingId === reservation.id ? "not-allowed" : "pointer",
                           transition: "all 0.2s",
                         }}
-                        onMouseEnter={(e) => {
-                          if (processingId !== reservation.id) {
-                            e.currentTarget.style.backgroundColor = "#fee";
-                            e.currentTarget.style.borderColor = "#c53030";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (processingId !== reservation.id) {
-                            e.currentTarget.style.backgroundColor = "#fff5f5";
-                            e.currentTarget.style.borderColor = "#feb2b2";
-                          }
-                        }}
                       >
-                        {processingId === reservation.id ? "..." : "Anulează"}
+                        Anulează ✕
                       </button>
                     )}
                   </div>
@@ -636,9 +707,17 @@ const MyReservations = () => {
           </div>
         )}
       </div>
+      
+      <ConfirmationModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={() => setModalConfig({ ...modalConfig, isOpen: false })}
+      />
     </div>
   );
 };
 
 export default MyReservations;
-

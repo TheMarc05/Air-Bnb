@@ -13,6 +13,8 @@ public interface ReservationService {
 
     Reservation confirmReservation(Long reservationId, User currentUser); //confirma o rezervare (pt host sau admin)
 
+    Reservation completeReservation(Long reservationId, User currentUser); //finalizeaza o rezervare (pt host sau admin)
+
     Reservation cancelReservation(Long reservationId, User currentUser); //anuleaza o rezervare (pt guest, host sau admin)
 
     Optional<Reservation> findReservationById(Long id); //gaseste rezervarea dupa id

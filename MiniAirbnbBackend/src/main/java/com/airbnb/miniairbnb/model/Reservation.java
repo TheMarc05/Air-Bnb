@@ -1,5 +1,6 @@
 package com.airbnb.miniairbnb.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -28,12 +29,14 @@ public class Reservation {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_id", nullable = false)
     @NotNull(message = "Property is required")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Property property;
 
     // Relație Many-to-One cu User (Guest-ul care face rezervarea)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "guest_id", nullable = false)
     @NotNull(message = "Guest is required")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User guest;
 
     @Column(name = "check_in_date", nullable = false)

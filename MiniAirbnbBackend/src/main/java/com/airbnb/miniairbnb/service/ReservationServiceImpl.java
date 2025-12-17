@@ -26,14 +26,14 @@ public class ReservationServiceImpl implements ReservationService{
 
     @Override
     public Reservation createReservation(Long propertyId, LocalDate checkInDate, LocalDate checkOutDate, Integer numberOfGuests, User guest) {
-        //verifica daca utilizatorul este guest sau admin
-        if (guest.getRole() != UserRole.ROLE_GUEST && guest.getRole() != UserRole.ROLE_ADMIN) {
-            throw new RuntimeException("Only GUEST or ADMIN can create reservations");
-        }
-
         //gaseste proprietatea
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new RuntimeException("Property not found with id: " + propertyId));
+
+        //verifica daca utilizatorul este host-ul proprietatii
+        if (property.getHost().getId().equals(guest.getId())) {
+            throw new RuntimeException("Nu poți închiria deoarece ești host-ul!");
+        }
 
         //verifica daca proprietatea este activa
         if (!property.getIsActive()) {
@@ -89,6 +89,25 @@ public class ReservationServiceImpl implements ReservationService{
         }
 
         reservation.setStatus(ReservationStatus.CONFIRMED);
+        return reservationRepository.save(reservation);
+    }
+
+    @Override
+    public Reservation completeReservation(Long reservationId, User currentUser) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new RuntimeException("Reservation not found with id: " + reservationId));
+
+        //verifica daca utilizatorul este host-ul proprietatii sau admin
+        if (currentUser.getRole() != UserRole.ROLE_ADMIN &&
+                !reservation.getProperty().getHost().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Only property host or ADMIN can complete reservations");
+        }
+
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            throw new RuntimeException("Only CONFIRMED reservations can be completed");
+        }
+
+        reservation.setStatus(ReservationStatus.COMPLETED);
         return reservationRepository.save(reservation);
     }
 

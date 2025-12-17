@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { propertyService } from "../services/propertyService";
 import { UserRole } from "../types";
 import type { Property } from "../types";
+import ConfirmationModal from "../components/ConfirmationModal";
 
 const MyProperties = () => {
   const { isAuthenticated, user } = useAuth();
@@ -13,6 +14,21 @@ const MyProperties = () => {
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+
+  // State pentru modal
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: "danger" | "info" | "success";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "info",
+  });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -48,23 +64,23 @@ const MyProperties = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Ești sigur că vrei să ștergi această proprietate?")) {
-      return;
-    }
-
-    try {
-      setDeletingId(id);
-      await propertyService.deleteProperty(id);
-      setProperties(properties.filter((p) => p.id !== id));
-    } catch (err: any) {
-      alert(
-        err.response?.data?.message ||
-          err.message ||
-          "Eroare la ștergerea proprietății."
-      );
-    } finally {
-      setDeletingId(null);
-    }
+    setModalConfig({
+      isOpen: true,
+      title: "Șterge proprietatea",
+      message: "Ești sigur că vrei să ștergi această proprietate? Toate datele asociate vor fi pierdute definitiv.",
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          setDeletingId(id);
+          await propertyService.deleteProperty(id);
+          setProperties(properties.filter((p) => p.id !== id));
+        } catch (err: any) {
+          alert(err.response?.data?.message || err.message || "Eroare la ștergerea proprietății.");
+        } finally {
+          setDeletingId(null);
+        }
+      },
+    });
   };
 
   if (!isAuthenticated) {
@@ -614,6 +630,15 @@ const MyProperties = () => {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={() => setModalConfig({ ...modalConfig, isOpen: false })}
+      />
     </div>
   );
 };
