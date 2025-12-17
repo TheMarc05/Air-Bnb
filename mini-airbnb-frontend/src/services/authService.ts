@@ -38,6 +38,8 @@ export const authService = {
       JSON.stringify({
         id: authResponse.id,
         email: authResponse.email,
+        firstName: authResponse.firstName,
+        lastName: authResponse.lastName,
         role: authResponse.role,
       })
     );

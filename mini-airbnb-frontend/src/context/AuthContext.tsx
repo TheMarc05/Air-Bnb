@@ -6,6 +6,8 @@ import type { LoginRequest, RegisterRequest, UserRole } from "../types";
 interface User {
   id: number;
   email: string;
+  firstName: string;
+  lastName: string;
   role: UserRole;
 }
 
@@ -50,6 +52,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser({
         id: response.id,
         email: response.email,
+        firstName: response.firstName,
+        lastName: response.lastName,
         role: response.role as UserRole,
       });
     } catch (error) {
@@ -65,6 +69,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser({
         id: response.id,
         email: response.email,
+        firstName: response.firstName,
+        lastName: response.lastName,
         role: response.role as UserRole,
       });
     } catch (error) {

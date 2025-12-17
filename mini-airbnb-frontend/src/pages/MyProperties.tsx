@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { propertyService } from "../services/propertyService";
 import { UserRole } from "../types";
 import type { Property } from "../types";
@@ -8,6 +9,7 @@ import ConfirmationModal from "../components/ConfirmationModal";
 
 const MyProperties = () => {
   const { isAuthenticated, user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,11 +55,9 @@ const MyProperties = () => {
       const data = await propertyService.getMyProperties();
       setProperties(data);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Eroare la încărcarea proprietăților."
-      );
+      const message = err.response?.data?.message || err.message || "Eroare la încărcarea proprietăților.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -74,8 +74,9 @@ const MyProperties = () => {
           setDeletingId(id);
           await propertyService.deleteProperty(id);
           setProperties(properties.filter((p) => p.id !== id));
+          showToast("Proprietatea a fost ștearsă.", "info");
         } catch (err: any) {
-          alert(err.response?.data?.message || err.message || "Eroare la ștergerea proprietății.");
+          showToast(err.response?.data?.message || err.message || "Eroare la ștergerea proprietății.", "error");
         } finally {
           setDeletingId(null);
         }

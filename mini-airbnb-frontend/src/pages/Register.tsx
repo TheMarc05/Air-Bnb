@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import type { RegisterRequest } from "../types";
 import { UserRole } from "../types";
 
@@ -12,10 +13,10 @@ const Register = () => {
     lastName: "",
     role: UserRole.ROLE_GUEST,
   });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { register } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleChange = (
@@ -30,18 +31,15 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
       await register(formData);
+      showToast("Contul a fost creat cu succes!", "success");
       navigate("/");
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Registration failed. Please try again."
-      );
+      const message = err instanceof Error ? err.message : "Eroare la înregistrare.";
+      showToast(message === "Email already exists" ? "Acest email este deja folosit." : message, "error");
     } finally {
       setLoading(false);
     }
@@ -92,22 +90,6 @@ const Register = () => {
           >
             Înregistrează-te pentru a începe
           </p>
-
-          {error && (
-            <div
-              style={{
-                backgroundColor: "#fff5f5",
-                border: "1px solid #feb2b2",
-                color: "#c53030",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                marginBottom: "24px",
-                fontSize: "14px",
-              }}
-            >
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: "16px" }}>

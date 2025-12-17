@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { reservationService } from "../services/reservationService";
 import { UserRole, ReservationStatus } from "../types";
 import type { Reservation } from "../types";
@@ -8,6 +9,7 @@ import ConfirmationModal from "../components/ConfirmationModal";
 
 const MyReservations = () => {
   const { isAuthenticated, user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,11 +55,9 @@ const MyReservations = () => {
       }
       setReservations(data);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Eroare la încărcarea rezervărilor."
-      );
+      const message = err.response?.data?.message || err.message || "Eroare la încărcarea rezervărilor.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -73,9 +73,10 @@ const MyReservations = () => {
         try {
           setProcessingId(id);
           await reservationService.confirmReservation(id);
+          showToast("Rezervare confirmată!", "success");
           await loadReservations();
         } catch (err: any) {
-          alert(err.response?.data?.message || err.message || "Eroare la confirmarea rezervării.");
+          showToast(err.response?.data?.message || err.message || "Eroare la confirmarea rezervării.", "error");
         } finally {
           setProcessingId(null);
         }
@@ -93,9 +94,10 @@ const MyReservations = () => {
         try {
           setProcessingId(id);
           await reservationService.completeReservation(id);
+          showToast("Rezervare finalizată cu succes!", "success");
           await loadReservations();
         } catch (err: any) {
-          alert(err.response?.data?.message || err.message || "Eroare la finalizarea rezervării.");
+          showToast(err.response?.data?.message || err.message || "Eroare la finalizarea rezervării.", "error");
         } finally {
           setProcessingId(null);
         }
@@ -113,9 +115,10 @@ const MyReservations = () => {
         try {
           setProcessingId(id);
           await reservationService.cancelReservation(id);
+          showToast("Rezervare anulată.", "info");
           await loadReservations();
         } catch (err: any) {
-          alert(err.response?.data?.message || err.message || "Eroare la anularea rezervării.");
+          showToast(err.response?.data?.message || err.message || "Eroare la anularea rezervării.", "error");
         } finally {
           setProcessingId(null);
         }

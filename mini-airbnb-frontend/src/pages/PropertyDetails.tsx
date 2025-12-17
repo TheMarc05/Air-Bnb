@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { propertyService } from "../services/propertyService";
 import { reservationService } from "../services/reservationService";
 import type { Property } from "../types";
@@ -9,11 +10,11 @@ import ConfirmationModal from "../components/ConfirmationModal";
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [reservationData, setReservationData] = useState<ReservationRequest>({
     propertyId: Number(id),
     checkInDate: "",
@@ -22,6 +23,7 @@ const PropertyDetails = () => {
   });
   const [reserving, setReserving] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [error, setError] = useState(false); // Changed to boolean for UI state
 
   // State pentru modal
   const [modalConfig, setModalConfig] = useState<{
@@ -50,7 +52,8 @@ const PropertyDetails = () => {
           propertyId: data.id,
         }));
       } catch (err) {
-        setError("Proprietatea nu a fost găsită.");
+        setError(true);
+        showToast("Proprietatea nu a fost găsită.", "error");
         console.error(err);
       } finally {
         setLoading(false);
@@ -63,7 +66,8 @@ const PropertyDetails = () => {
   const handleReservation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      navigate("/login");
+      // Salvăm locația curentă pentru a ne întoarce după login
+      navigate(`/login?redirectTo=/property/${id}`);
       return;
     }
 
@@ -76,13 +80,14 @@ const PropertyDetails = () => {
         setReserving(true);
         try {
           await reservationService.createReservation(reservationData);
-          alert("Rezervare creată cu succes! Așteaptă confirmarea de la gazdă.");
-          navigate("/");
+          showToast("Rezervare creată cu succes! Așteaptă confirmarea de la gazdă.", "success");
+          navigate("/my-reservations");
         } catch (err: any) {
-          alert(
+          showToast(
             err.response?.data?.message ||
               err.message ||
-              "Eroare la crearea rezervării. Te rugăm să încerci din nou."
+              "Eroare la crearea rezervării. Te rugăm să încerci din nou.",
+            "error"
           );
         } finally {
           setReserving(false);
@@ -120,7 +125,7 @@ const PropertyDetails = () => {
         }}
       >
         <p style={{ color: "#c53030", marginBottom: "20px" }}>
-          {error || "Proprietatea nu a fost găsită"}
+          Proprietatea nu a fost găsită
         </p>
         <Link
           to="/"
@@ -758,37 +763,34 @@ const PropertyDetails = () => {
 
                   <button
                     type="submit"
-                    disabled={reserving || !isAuthenticated}
+                    disabled={reserving}
                     style={{
                       width: "100%",
                       padding: "16px",
-                      backgroundColor: isAuthenticated ? "#222" : "#ddd",
+                      backgroundColor: "#222",
                       color: "white",
                       border: "none",
                       borderRadius: "8px",
                       fontSize: "16px",
                       fontWeight: "600",
-                      cursor:
-                        isAuthenticated && !reserving
-                          ? "pointer"
-                          : "not-allowed",
+                      cursor: !reserving ? "pointer" : "not-allowed",
                       transition: "all 0.2s",
                     }}
                     onMouseEnter={(e) => {
-                      if (isAuthenticated && !reserving) {
+                      if (!reserving) {
                         e.currentTarget.style.backgroundColor = "#000";
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (isAuthenticated && !reserving) {
+                      if (!reserving) {
                         e.currentTarget.style.backgroundColor = "#222";
                       }
                     }}
                   >
-                    {!isAuthenticated
-                      ? "Conectează-te pentru a rezerva"
-                      : reserving
+                    {reserving
                       ? "Se procesează..."
+                      : !isAuthenticated
+                      ? "Conectează-te pentru a rezerva"
                       : "Rezervă"}
                   </button>
                 </form>

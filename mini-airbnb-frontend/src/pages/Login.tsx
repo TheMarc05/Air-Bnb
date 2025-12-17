@@ -1,30 +1,35 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import type { LoginRequest } from "../types";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
       const credentials: LoginRequest = { email, password };
       await login(credentials);
-      navigate("/");
+      showToast("Te-ai conectat cu succes!", "success");
+      
+      // Verificăm dacă avem o cale de redirecționare salvată
+      const params = new URLSearchParams(location.search);
+      const redirectTo = params.get("redirectTo") || "/";
+      navigate(redirectTo);
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Login failed. Please try again."
-      );
+      const message = err instanceof Error ? err.message : "Eroare la conectare.";
+      showToast(message === "Invalid email or password" ? "Email sau parolă incorectă." : message, "error");
     } finally {
       setLoading(false);
     }
@@ -75,22 +80,6 @@ const Login = () => {
           >
             Conectează-te pentru a continua
           </p>
-
-          {error && (
-            <div
-              style={{
-                backgroundColor: "#fff5f5",
-                border: "1px solid #feb2b2",
-                color: "#c53030",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                marginBottom: "24px",
-                fontSize: "14px",
-              }}
-            >
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: "16px" }}>

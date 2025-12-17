@@ -80,6 +80,8 @@ export interface AuthResponse {
   type: string;
   id: number;
   email: string;
+  firstName: string;
+  lastName: string;
   role: string;
 }
 

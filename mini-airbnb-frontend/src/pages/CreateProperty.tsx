@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { propertyService } from "../services/propertyService";
 import { UserRole } from "../types";
 import type { Property } from "../types";
 
 const CreateProperty = () => {
   const { isAuthenticated, user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [formData, setFormData] = useState<
@@ -75,12 +76,11 @@ const CreateProperty = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
       await propertyService.createProperty(formData, selectedFiles);
-      alert("Proprietatea a fost creată cu succes!");
+      showToast("Proprietatea a fost creată cu succes!", "success");
       navigate("/");
     } catch (err: any) {
       console.error("Create property error:", err);
@@ -89,7 +89,7 @@ const CreateProperty = () => {
         (typeof err.response?.data === "string" ? err.response.data : null) ||
         err.message ||
         "Eroare la crearea proprietății. Te rugăm să încerci din nou.";
-      setError(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -201,23 +201,6 @@ const CreateProperty = () => {
           Completează informațiile despre proprietatea ta pentru a o face
           disponibilă pentru rezervări
         </p>
-
-        {error && (
-          <div
-            style={{
-              backgroundColor: "#fff5f5",
-              border: "1px solid #feb2b2",
-              color: "#c53030",
-              padding: "14px 18px",
-              borderRadius: "8px",
-              marginBottom: "32px",
-              fontSize: "14px",
-              lineHeight: "1.5",
-            }}
-          >
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit}>
           {/* Title */}

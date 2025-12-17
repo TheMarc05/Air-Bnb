@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { propertyService } from "../services/propertyService";
 import { UserRole } from "../types";
 import type { Property } from "../types";
@@ -8,10 +9,10 @@ import type { Property } from "../types";
 const EditProperty = () => {
   const { id } = useParams<{ id: string }>();
   const { isAuthenticated, user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [formData, setFormData] = useState<
@@ -65,10 +66,11 @@ const EditProperty = () => {
         imageUrls: property.imageUrls || [],
       });
     } catch (err: any) {
-      setError(
+      showToast(
         err.response?.data?.message ||
           err.message ||
-          "Eroare la încărcarea proprietății."
+          "Eroare la încărcarea proprietății.",
+        "error"
       );
     } finally {
       setLoading(false);
@@ -119,12 +121,11 @@ const EditProperty = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setSaving(true);
 
     try {
       await propertyService.updateProperty(Number(id), formData, selectedFiles);
-      alert("Proprietatea a fost actualizată cu succes!");
+      showToast("Proprietatea a fost actualizată cu succes!", "success");
       navigate("/my-properties");
     } catch (err: any) {
       console.error("Update property error:", err);
@@ -133,7 +134,7 @@ const EditProperty = () => {
         (typeof err.response?.data === "string" ? err.response.data : null) ||
         err.message ||
         "Eroare la actualizarea proprietății. Te rugăm să încerci din nou.";
-      setError(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setSaving(false);
     }
@@ -273,23 +274,6 @@ const EditProperty = () => {
         >
           Actualizează informațiile despre proprietatea ta
         </p>
-
-        {error && (
-          <div
-            style={{
-              backgroundColor: "#fff5f5",
-              border: "1px solid #feb2b2",
-              color: "#c53030",
-              padding: "14px 18px",
-              borderRadius: "8px",
-              marginBottom: "32px",
-              fontSize: "14px",
-              lineHeight: "1.5",
-            }}
-          >
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit}>
           {/* Title */}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { propertyService } from "../services/propertyService";
@@ -9,6 +10,7 @@ import ConfirmationModal from "../components/ConfirmationModal";
 
 const Home = () => {
   const { user, isAuthenticated, updateUser, logout } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [becomingHost, setBecomingHost] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -65,7 +67,7 @@ const Home = () => {
       user?.role === UserRole.ROLE_HOST ||
       user?.role === UserRole.ROLE_ADMIN
     ) {
-      alert("Ești deja gazdă!");
+      showToast("Ești deja gazdă!", "info");
       return;
     }
 
@@ -84,10 +86,16 @@ const Home = () => {
             id: response.id,
             email: response.email,
             role: response.role as UserRole,
+            firstName: user?.firstName || "",
+            lastName: user?.lastName || "",
           });
           setShowHostModal(true);
+          showToast("Acum ești gazdă!", "success");
         } catch (error) {
-          alert("Eroare la schimbarea rolului. Te rugăm să încerci din nou.");
+          showToast(
+            "Eroare la schimbarea rolului. Te rugăm să încerci din nou.",
+            "error"
+          );
           console.error(error);
         } finally {
           setBecomingHost(false);
@@ -105,6 +113,7 @@ const Home = () => {
       onConfirm: () => {
         logout();
         setShowUserMenu(false);
+        showToast("Te-ai deconectat cu succes.", "info");
         navigate("/");
       },
     });
@@ -121,6 +130,7 @@ const Home = () => {
         setProperties(data);
       } catch (error) {
         console.error("Failed to load properties:", error);
+        showToast("Eroare la încărcarea proprietăților.", "error");
       } finally {
         setLoading(false);
       }
@@ -479,20 +489,6 @@ const Home = () => {
                     cursor: "pointer",
                     transition: "all 0.2s",
                     backgroundColor: showUserMenu ? "#f7f7f7" : "transparent",
-                    boxShadow: showUserMenu
-                      ? "0 2px 8px rgba(0,0,0,0.15)"
-                      : "none",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!showUserMenu) {
-                      e.currentTarget.style.boxShadow =
-                        "0 2px 8px rgba(0,0,0,0.15)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!showUserMenu) {
-                      e.currentTarget.style.boxShadow = "none";
-                    }
                   }}
                 >
                   <svg
@@ -537,6 +533,32 @@ const Home = () => {
                       zIndex: 200,
                     }}
                   >
+                    <div
+                      style={{
+                        padding: "12px 16px",
+                        borderBottom: "1px solid #ebebeb",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: "#222",
+                        }}
+                      >
+                        Salut {user?.firstName}!
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#717171",
+                          marginTop: "2px",
+                        }}
+                      >
+                        {user?.email}
+                      </div>
+                    </div>
                     <Link
                       to="/my-reservations"
                       onClick={() => setShowUserMenu(false)}
@@ -641,54 +663,111 @@ const Home = () => {
                   e.currentTarget.style.backgroundColor = "transparent";
                 }}
               >
-                Devino gazdă
+                Intră în cont
               </button>
-              <button
-                onClick={() => navigate("/login")}
+              <div
+                ref={menuRef}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "6px 6px 6px 12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "22px",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  backgroundColor: "transparent",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow =
-                    "0 2px 8px rgba(0,0,0,0.15)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = "none";
+                  position: "relative",
                 }}
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  style={{ color: "#717171" }}
-                >
-                  <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" />
-                </svg>
                 <div
+                  onClick={() => setShowUserMenu(!showUserMenu)}
                   style={{
-                    width: "30px",
-                    height: "30px",
-                    borderRadius: "50%",
-                    backgroundColor: "#717171",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    color: "#fff",
-                    fontSize: "16px",
+                    gap: "10px",
+                    padding: "6px 6px 6px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "22px",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    backgroundColor: showUserMenu ? "#f7f7f7" : "transparent",
                   }}
                 >
-                  👤
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    style={{ color: "#717171" }}
+                  >
+                    <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" />
+                  </svg>
+                  <div
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      borderRadius: "50%",
+                      backgroundColor: "#717171",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#fff",
+                      fontSize: "16px",
+                    }}
+                  >
+                    👤
+                  </div>
                 </div>
-              </button>
+                {showUserMenu && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      right: 0,
+                      marginTop: "8px",
+                      backgroundColor: "#fff",
+                      borderRadius: "12px",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                      border: "1px solid #ebebeb",
+                      minWidth: "200px",
+                      padding: "8px",
+                      zIndex: 200,
+                    }}
+                  >
+                    <Link
+                      to="/login"
+                      style={{
+                        display: "block",
+                        padding: "12px 16px",
+                        color: "#222",
+                        textDecoration: "none",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        borderRadius: "8px",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#f7f7f7")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "transparent")
+                      }
+                    >
+                      Autentificare
+                    </Link>
+                    <Link
+                      to="/register"
+                      style={{
+                        display: "block",
+                        padding: "12px 16px",
+                        color: "#717171",
+                        textDecoration: "none",
+                        fontSize: "14px",
+                        borderRadius: "8px",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#f7f7f7")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "transparent")
+                      }
+                    >
+                      Înregistrare
+                    </Link>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
