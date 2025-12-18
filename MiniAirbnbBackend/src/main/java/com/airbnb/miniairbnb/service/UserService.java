@@ -20,4 +20,6 @@ public interface UserService {
     List<User> findAllUsers(); //gaseste toti utilizatorii, doar adminul
 
     User updateUserRole(Long userId, UserRole newRole);
+
+    void deleteUser(Long userId);
 }

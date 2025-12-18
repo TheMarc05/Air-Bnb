@@ -559,6 +559,32 @@ const Home = () => {
                         {user?.email}
                       </div>
                     </div>
+                    {user?.role === UserRole.ROLE_ADMIN && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setShowUserMenu(false)}
+                        style={{
+                          display: "block",
+                          padding: "12px 16px",
+                          color: "#0284c7",
+                          textDecoration: "none",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          borderRadius: "8px",
+                          transition: "background-color 0.2s",
+                          backgroundColor: "#f0f9ff",
+                          margin: "4px",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "#e0f2fe";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "#f0f9ff";
+                        }}
+                      >
+                        Admin Dashboard 🔐
+                      </Link>
+                    )}
                     <Link
                       to="/my-reservations"
                       onClick={() => setShowUserMenu(false)}

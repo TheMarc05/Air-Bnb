@@ -29,6 +29,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity //activeaza configuratia spring security
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -83,6 +84,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/**").permitAll() //alte endpoint-uri publice
                         .requestMatchers(HttpMethod.GET, "/api/properties", "/api/properties/**").permitAll() //permite accesul la proprietati fara autentificare
                         .requestMatchers(HttpMethod.GET, "/api/reservations/property/*/busy-dates").permitAll() //permite accesul public la datele ocupate
+                        .requestMatchers("/api/users/**").hasRole("ADMIN") //doar adminul poate accesa utilizatorii
                         .requestMatchers("/uploads/**").permitAll() //permite accesul la poze
                         .anyRequest().authenticated()) //toate celelalte endpoint-uri necesita autentificare
                 .authenticationProvider(authenticationProvider(

@@ -8,6 +8,7 @@ import CreateProperty from "./pages/CreateProperty";
 import MyProperties from "./pages/MyProperties";
 import EditProperty from "./pages/EditProperty";
 import MyReservations from "./pages/MyReservations";
+import AdminDashboard from "./pages/AdminDashboard";
 import { UserRole } from "./types";
 
 // Protected Route Component
@@ -40,6 +41,25 @@ const HostRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Admin Only Route Component
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (user?.role !== UserRole.ROLE_ADMIN) {
+    return <Navigate to="/" />;
+  }
+
+  return <>{children}</>;
+};
+
 function App() {
   return (
     <BrowserRouter>
@@ -47,6 +67,14 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/property/:id" element={<PropertyDetails />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
         <Route
           path="/create-property"
           element={

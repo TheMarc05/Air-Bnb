@@ -78,4 +78,22 @@ public class UserServiceImpl implements UserService {
         user.setRole(newRole);
         return userRepository.save(user);
     }
+
+    @Override
+    public void deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        
+        // Nu permitem stergerea ultimului Admin (optional, dar recomandat)
+        if (user.getRole() == UserRole.ROLE_ADMIN) {
+            long adminCount = userRepository.findAll().stream()
+                    .filter(u -> u.getRole() == UserRole.ROLE_ADMIN)
+                    .count();
+            if (adminCount <= 1) {
+                throw new RuntimeException("Nu se poate sterge ultimul administrator!");
+            }
+        }
+        
+        userRepository.delete(user);
+    }
 }
