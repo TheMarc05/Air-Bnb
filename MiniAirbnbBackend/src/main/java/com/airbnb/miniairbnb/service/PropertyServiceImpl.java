@@ -14,9 +14,12 @@ import java.util.Optional;
 @Transactional
 public class PropertyServiceImpl implements PropertyService {
     private final PropertyRepository propertyRepository;
+    private final com.airbnb.miniairbnb.repository.ReservationRepository reservationRepository;
 
-    public PropertyServiceImpl(PropertyRepository propertyRepository) {
+    public PropertyServiceImpl(PropertyRepository propertyRepository, 
+                               com.airbnb.miniairbnb.repository.ReservationRepository reservationRepository) {
         this.propertyRepository = propertyRepository;
+        this.reservationRepository = reservationRepository;
     }
 
     @Override
@@ -88,6 +91,15 @@ public class PropertyServiceImpl implements PropertyService {
             throw new RuntimeException("You don't have permission to delete this property");
         }
 
+        // Verificăm dacă există rezervări (în afara celor anulate)
+        long activeReservations = reservationRepository.findByProperty(property).stream()
+                .filter(r -> r.getStatus() != com.airbnb.miniairbnb.model.ReservationStatus.CANCELLED)
+                .count();
+
+        if (activeReservations > 0) {
+            throw new RuntimeException("Această proprietate are rezervări active sau finalizate și nu poate fi ștearsă. Poți în schimb să o dezactivezi.");
+        }
+
         propertyRepository.delete(property);
     }
 
@@ -101,6 +113,12 @@ public class PropertyServiceImpl implements PropertyService {
     @Transactional(readOnly = true)
     public List<Property> findAllActiveProperties() {
         return propertyRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Property> findAllProperties() {
+        return propertyRepository.findAll();
     }
 
     @Override

@@ -17,6 +17,8 @@ public interface PropertyService {
 
     List<Property> findAllActiveProperties(); //gaseste toate proprietatile active (pt guest)
 
+    List<Property> findAllProperties(); //gaseste toate proprietatile (pt ADMIN)
+
     List<Property> findPropertiesByHost(User host); //gaseste toate proprietatile unui host
 
     List<Property> findActivePropertiesByCity(String city); //filtrare proprietati active dupa oras

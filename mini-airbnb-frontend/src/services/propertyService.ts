@@ -69,4 +69,16 @@ export const propertyService = {
   deleteProperty: async (id: number): Promise<void> => {
     await api.delete(`/properties/${id}`);
   },
+
+  // (ADMIN) Obtine toate proprietatile din sistem
+  getAdminAllProperties: async (): Promise<Property[]> => {
+    const response = await api.get<Property[]>("/properties/all");
+    return response.data;
+  },
+
+  // (ADMIN) Obtine toate proprietatile unui anumit utilizator
+  getPropertiesByUser: async (userId: number): Promise<Property[]> => {
+    const response = await api.get<Property[]>(`/properties/user/${userId}`);
+    return response.data;
+  },
 };

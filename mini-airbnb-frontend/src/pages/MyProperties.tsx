@@ -76,7 +76,8 @@ const MyProperties = () => {
           setProperties(properties.filter((p) => p.id !== id));
           showToast("Proprietatea a fost ștearsă.", "info");
         } catch (err: any) {
-          showToast(err.response?.data?.message || err.message || "Eroare la ștergerea proprietății.", "error");
+          const errorMessage = err.response?.data || "Eroare la ștergerea proprietății.";
+          showToast(errorMessage, "error");
         } finally {
           setDeletingId(null);
         }

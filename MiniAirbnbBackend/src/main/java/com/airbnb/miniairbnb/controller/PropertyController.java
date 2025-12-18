@@ -92,6 +92,29 @@ public class PropertyController {
         return ResponseEntity.ok(properties);
     }
 
+    // GET /api/properties/all - lista cu toate proprietatile (doar pt ADMIN)
+    @GetMapping("/all")
+    public ResponseEntity<List<Property>> getAllProperties() {
+        User currentUser = getCurrentUser();
+        if (currentUser == null || currentUser.getRole() != UserRole.ROLE_ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(propertyService.findAllProperties());
+    }
+
+    // GET /api/properties/user/{userId} - lista cu proprietatile unui utilizator specific (doar pt ADMIN)
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Property>> getPropertiesByUser(@PathVariable Long userId) {
+        User currentUser = getCurrentUser();
+        if (currentUser == null || currentUser.getRole() != UserRole.ROLE_ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        
+        return userService.findUserById(userId)
+                .map(user -> ResponseEntity.ok(propertyService.findPropertiesByHost(user)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // POST /api/properties - creeazaa o proprietate noua (pt host sau admin)
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<?> createProperty(
